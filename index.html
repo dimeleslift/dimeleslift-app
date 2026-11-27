@@ -2145,6 +2145,7 @@ function vEntrenar(){
           <input type="text" inputmode="decimal" placeholder="${sg ? fmtKg(sg) : "kg"}" value="${esc(s.peso)}" data-log="${esc(key)}|${i}|peso" aria-label="Peso serie ${i+1}">
           <input type="number" inputmode="numeric" placeholder="${esc(gr?.reps ?? "")}${gr && esTiempo(r, gr) ? " "+uLbl(unidadDe(r, gr)) : ""}" value="${esc(s.reps)}" data-log="${esc(key)}|${i}|reps" aria-label="${gr && esTiempo(r, gr) ? "Tiempo" : "Repeticiones"} serie ${i+1}">
           ${gr && esTiempo(r, gr) ? `<span class="muted" style="text-align:center" title="Los ejercicios por tiempo no llevan RPE">—</span>` : `<input type="text" inputmode="decimal" placeholder="${gr ? (rpeOf(gr) ?? "RPE") : "RPE"}" value="${esc(s.rpe)}" data-log="${esc(key)}|${i}|rpe" aria-label="RPE serie ${i+1}">`}
+          ${esBarra(r.ej) && !esTiempo(r,gr) ? `<div data-discos style="grid-column:1/-1">${barraSvg(s.peso || sg)}</div>` : ""}
         </div>`; }).join("");
       const e = S.ejercicios[r.ej];
       const top = numOrNull(draft[0]?.peso) || suggestion(u, r.ej, plan[0] || r.series[0]);
@@ -2517,7 +2518,7 @@ document.addEventListener("click", e => { const t = e.target.closest("[data-act]
 document.addEventListener("input", e => {
   const t = e.target, d = t.dataset;
   if(d.bind && S.draft){ setPath(S.draft, d.bind, "rng" in d ? parseIntens(t.value) : "num" in d ? numOrNull(t.value) : t.value); markDirty(); if(!$(".savebar")){ document.body.insertAdjacentHTML("beforeend", saveBar()); } }
-  else if(d.log){ const [b,w,dd,r,i,f] = d.log.split("|"); const k = [b,w,dd,r].join("|"); (S.logDraft[k] ||= [])[+i] ||= {peso:"",reps:"",rpe:""}; S.logDraft[k][+i][f] = t.value; }
+  else if(d.log){ const [b,w,dd,r,i,f] = d.log.split("|"); const k = [b,w,dd,r].join("|"); (S.logDraft[k] ||= [])[+i] ||= {peso:"",reps:"",rpe:""}; S.logDraft[k][+i][f] = t.value; if(f === "peso"){ const panel = t.closest(".lset")?.querySelector("[data-discos]"); if(panel) panel.innerHTML = barraSvg(t.value || t.placeholder); } }
   else if(d.lognota){ S.logDraft[d.lognota+"#nota"] = t.value; }
   else if(d.obs){ S.obsDraft[d.obs] = t.value; }
   else if(d.fb){ S.fbDraft[d.fb] = t.value; }
@@ -2714,13 +2715,19 @@ function stepper(lbl, f, val, step, unit){
     <input type="text" inputmode="decimal" placeholder="0" value="${esc(val === "" || val == null ? "" : fmtNum(val))}" data-gd="${f}" aria-label="${esc(lbl)}">
     <button class="gd-pm" data-act="gdStep" data-f="${f}" data-v="${step}" aria-label="Más">+</button></div>${unit ? `<div class="gd-unit">${unit}</div>` : ""}</div>`;
 }
-function barraSvg(kg){
-  const disc = [[25,"#DA45A4",64],[20,"#3b82f6",60],[15,"#f2b84b",54],[10,"#A3E850",48],[5,"#F4F1EC",40],[2.5,"#e11d48",32],[1.25,"#9ca3af",26]];
-  let lado = Math.max(0, ((+kg||0) - 20)/2); const ps = [];
-  for(const [w,c,h] of disc){ while(lado >= w - 1e-9 && ps.length < 9){ ps.push([w,c,h]); lado -= w; } }
-  let xl = 92, xr = 208; const plates = ps.map(([w,c,h]) => { const wd = w >= 10 ? 12 : 9; xl -= wd; const s = `<rect x="${xl}" y="${40-h/2}" width="${wd}" height="${h}" rx="3" fill="${c}"/><rect x="${xr}" y="${40-h/2}" width="${wd}" height="${h}" rx="3" fill="${c}"/>`; xl -= 2; xr += wd + 2; return s; }).join("");
-  return `<svg class="gd-bar" viewBox="0 0 300 80" role="img" aria-label="Barra con discos"><rect x="10" y="37" width="280" height="6" rx="3" fill="#6b6b6b"/><rect x="92" y="31" width="6" height="18" rx="2" fill="#8a8a8a"/><rect x="202" y="31" width="6" height="18" rx="2" fill="#8a8a8a"/>${plates}</svg>
-  <div class="small muted" style="text-align:center">${(+kg||0) > 20 ? `Barra 20 kg + ${fmtKg(((+kg||0)-20)/2)} kg por lado` : "Barra sola (20 kg)"}</div>`;
+function barraSvg(valor){
+  const kg = numOrNull(valor);
+  if(!Number.isFinite(kg) || kg <= 0) return "";
+  if(kg < 20 || !Number.isInteger((kg-20)/2.5)) return '<small>Carga no disponible con barra de 20 kg y estos discos.</small>';
+  if(kg === 20) return '<small>Barra sola · 20 kg</small>';
+  let lado = (kg-20)/2;
+  const piezas = [];
+  for(const [peso,color] of [[25,"#de242a"],[20,"#2465cc"],[15,"#ffd12a"],[10,"#19894b"],[5,"#fff"],[2.5,"#111"],[1.25,"#2465cc"]]){
+    const cantidad = Math.floor(lado/peso);
+    lado %= peso;
+    if(cantidad) piezas.push(`<span style="white-space:nowrap"><i aria-hidden="true" style="display:inline-block;border:1px solid #888;border-radius:50%;background:${color};width:12px;height:12px"></i> ${cantidad} × ${peso.toLocaleString("es-CL")} kg</span>`);
+  }
+  return '<small>Barra de 20 kg · Por lado: '+piezas.join(" · ")+'</small>';
 }
 
 function vGuiado(){
@@ -2812,7 +2819,7 @@ function vGuiado(){
       </div>` : ""; })() : ""}
     ${prev?.hecho && !tmp ? `<div class="small muted">Serie anterior de hoy: ${fmtKg(numOrNull(prev.peso))} kg × ${esc(prev.reps)}</div>` : ""}
     ${tmp ? tiempoHtml(g, r, gr, uni, key, sIdx) : `<div class="gd-steps">${stepper(manc ? "Kilos por mancuerna" : "Kilos", "peso", g.cur.peso, manc ? 1 : 2.5, manc ? "por mancuerna" : "")+stepper("Repeticiones", "reps", g.cur.reps, 1, "")}</div>`}
-    ${barra ? barraSvg(g.cur.peso) : ""}
+    ${barra ? `<div data-discos-gd>${barraSvg(g.cur.peso)}</div>` : ""}
     ${(() => { const demo = demoHtml(r, e, true); const inst = e?.inst?.length ? `<ol>${e.inst.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : "";
       return demo ? `<details class="small muted"><summary style="cursor:pointer">Ver cómo se hace</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${demo}${inst}</div></details>`
         : inst ? `<details class="small muted"><summary style="cursor:pointer">Instrucciones</summary><div style="margin-top:8px">${inst}</div></details>` : ""; })()}
@@ -3055,7 +3062,7 @@ Object.assign(ACT, {
     render(); window.scrollTo(0,0); },
   gdShare: d => abrirEditorHistoria(d.k)
 });
-document.addEventListener("input", e => { const d = e.target.dataset; if(d.gd && S.gd?.cur){ S.gd.cur[d.gd] = String(e.target.value).replace(",", "."); gdSave(); } });
+document.addEventListener("input", e => { const d = e.target.dataset; if(d.gd && S.gd?.cur){ S.gd.cur[d.gd] = String(e.target.value).replace(",", "."); if(d.gd === "peso"){ const panel = document.querySelector("[data-discos-gd]"); if(panel) panel.innerHTML = barraSvg(e.target.value); } gdSave(); } });
 setInterval(() => {
   const g = S.gd; if(!g?.tmr) return; const el = document.getElementById("gdtmr"); const left = (g.tmr.end - Date.now())/1000;
   if(el){ el.textContent = left > 0 ? fmtSeg(left) : "¡Tiempo!"; el.classList.toggle("done", left <= 0); }
