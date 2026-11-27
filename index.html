@@ -2824,7 +2824,7 @@ function vGuiado(){
         ${sg ? `<div class="sg"><span class="small muted">Sugerido por la app</span><b>${fmtKg(sg)}${kgU}</b><span class="small muted">según tu historial</span>${b(sg, "Usar "+fmtKg(sg))}</div>` : ""}
       </div>` : ""; })() : ""}
     ${prev?.hecho && !tmp ? `<div class="small muted">Serie anterior de hoy: ${fmtKg(numOrNull(prev.peso))} kg × ${esc(prev.reps)}</div>` : ""}
-    ${tmp ? tiempoHtml(g, r, gr, uni, key, sIdx) : `<div class="gd-steps">${stepper(manc ? "Kilos por mancuerna" : "Kilos", "peso", g.cur.peso, manc ? 1 : 2.5, manc ? "por mancuerna" : "")+stepper("Repeticiones", "reps", g.cur.reps, 1, "")}</div>`}
+    ${tmp ? (requiereKilos(r,gr) ? stepper(manc ? "Kilos por mancuerna" : "Kilos","peso",g.cur.peso,manc ? 1 : 2.5,"") : "")+tiempoHtml(g, r, gr, uni, key, sIdx) : `<div class="gd-steps">${stepper(manc ? "Kilos por mancuerna" : "Kilos", "peso", g.cur.peso, manc ? 1 : 2.5, manc ? "por mancuerna" : "")+stepper("Repeticiones", "reps", g.cur.reps, 1, "")}</div>`}
     ${barra ? `<div data-discos-gd>${barraSvg(g.cur.peso)}</div>` : ""}
     ${(() => { const demo = demoHtml(r, e, true); const inst = e?.inst?.length ? `<ol>${e.inst.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : "";
       return demo ? `<details class="small muted"><summary style="cursor:pointer">Ver cómo se hace</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${demo}${inst}</div></details>`
@@ -2836,9 +2836,15 @@ function vGuiado(){
 // Ejercicio por tiempo: la duración que indicó la coach y, aparte, el temporizador que el alumno inicia
 // ¿Hay que descargar? Solo si el ejercicio se hizo con carga (no cardio, movilidad ni peso corporal)
 function requiereKilos(r, gr){
-  if(!r?.ej || esTiempo(r,gr)) return false;
+  if(!r?.ej) return false;
   const equipo = S.ejercicios[r.ej]?.eq || "";
-  return !/peso corporal|sin equipo|banda|elástico|bodyweight/i.test(equipo);
+  const nombre = ejName(r.ej);
+  if(/lastr|con (?:peso adicional|disco|barra|mancuerna|kettlebell)|lastre/i.test(nombre)) return true;
+  if(/peso corporal|sin equipo|banda|elástico|bodyweight|foam roller|fitball|colchoneta|barra de dominadas/i.test(equipo)) return false;
+  if(/barra|mancuerna|polea|kettlebell|balón medicinal/i.test(equipo)) return true;
+  if(secOf(r) === "cardio" || /bicicleta|trote|caminadora|elíptica|remo ergómetro/i.test(nombre)) return false;
+  if(/máquina/i.test(equipo) || S.ejercicios[r.ej]?.lift || /jalón|press|peso muerto|farmer|granjero/i.test(nombre)) return true;
+  return !esTiempo(r,gr) && !/movilidad|estiramiento|dominada|flexiones|burpee|salto|plancha/i.test(nombre);
 }
 function kilosValidos(valor){ const kg = numOrNull(valor); return Number.isFinite(kg) && kg > 0; }
 function descargar(r, draft){ return !!r?.ej && !esTiempo(r, planDe(r)[0]) && secOf(r) !== "activacion" && (draft||[]).some(x => x.hecho && (numOrNull(x.peso) || 0) > 0); }
@@ -3013,7 +3019,7 @@ async function gdGuardarSerie(x, rpe){ const {c, g, r, key} = x;
     const draft = draftDe(key, r, c.ent); const i = g.cur?.i ?? draft.findIndex(s => !s.hecho);
     if(requiereKilos(r,planDe(r)[i]) && !kilosValidos(g.cur.peso)) return toast("Ingresa los kilos de esta serie.",true);
     const tmp = esTiempo(r, planDe(r)[i]);
-    draft[i] = {peso: tmp || g.cur.peso === "" || g.cur.peso == null ? "" : String(g.cur.peso), reps: String(g.cur.reps ?? ""), rpe: tmp ? "" : rpe, hecho: true};
+    draft[i] = {peso: (tmp && !requiereKilos(r,planDe(r)[i])) || g.cur.peso === "" || g.cur.peso == null ? "" : String(g.cur.peso), reps: String(g.cur.reps ?? ""), rpe: tmp ? "" : rpe, hecho: true};
     const total = planDe(r).length; const quedan = draft.slice(0, total).some(s => !s.hecho);
     const desc = +r.descanso || (tmp ? 60 : S.ejercicios[r.ej]?.lift ? 180 : 120);
     if(quedan){ g.fase = "descanso"; g.restEnd = Date.now() + desc*1000; g.rang = false; g.cur = null; g.rpe = null; } else gdIrSiguiente(c, g);
@@ -3034,7 +3040,7 @@ Object.assign(ACT, {
     if(!reps){ toast("Anota cuántas repeticiones hiciste.", true); return; } g.fase = "rpe"; g.rpe = null; gdSave(); render(); },
   gdRpe: d => { S.gd.rpe = +d.v; gdSave(); render(); },
   gdUsar: d => { const g = S.gd; if(!g?.cur) return; g.cur.peso = +d.v; gdSave(); render(); },
-  gdTmrIni: d => { const g = S.gd; if(!g?.cur) return; g.tmr = {key:g.cur.key, i:g.cur.i, ini:Date.now(), end:Date.now() + (+d.s||0)*1000, dur:+d.s||0, rang:false};
+  gdTmrIni: d => { const g = S.gd; if(!g?.cur) return; const x = gdCur(); if(x?.r && requiereKilos(x.r,planDe(x.r)[g.cur.i]) && !kilosValidos(g.cur.peso)) return toast("Ingresa los kilos antes de iniciar.",true); g.tmr = {key:g.cur.key, i:g.cur.i, ini:Date.now(), end:Date.now() + (+d.s||0)*1000, dur:+d.s||0, rang:false};
     try{ audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){} gdSave(); render(); },
   gdTmrCancel: () => { S.gd.tmr = null; gdSave(); render(); },
   gdTmrYa: () => { const x = gdCur(); if(!x?.r) return; const g = x.g; const gr = planDe(x.r)[g.cur.i] || planDe(x.r)[0]; g.cur.reps = numOrNull(gr?.reps) ?? ""; g.tmr = null; return gdGuardarSerie(x, ""); },
