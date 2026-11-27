@@ -236,6 +236,7 @@ input,select,textarea{border-radius:12px}
 .gd-tiles span{font-size:.75rem;color:var(--muted);font-weight:700;text-transform:uppercase}
 .charttip{position:fixed;z-index:9000;display:none;max-width:320px;background:#141414;color:#F4F1EC;border:1px solid #37343d;border-radius:12px;padding:10px 12px;font-size:.82rem;line-height:1.45;white-space:pre-line;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .tipdot{cursor:pointer}
+svg circle:not(.tipdot),svg text,svg polyline{pointer-events:none}
 .gd-calc{display:flex;flex-direction:column;gap:8px}
 .gd-calcrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--panel2)}
 .gd-calcrow:last-child{border-bottom:0}
@@ -1476,11 +1477,12 @@ function vProgreso(uid){
   const liftSeries = main.map(m => ({name:m.name, color:m.color, pts:ser[m.ej]}));
   const rm = salud ? null : realMarks(uid);
   const marcasCard = !rm || !["S","B","D"].some(L => rm.out[L]) ? "" : (() => {
+    const fY = d => d ? new Date(d+"T12:00").toLocaleDateString("es-CL",{day:"numeric",month:"short",year:"numeric"}) : "—";
     const c = rm.comps[0]; const glC = c?.tot ? glPoints(c.tot, bw, a.sexo || "F") : null;
     const sTot = ["S","B","D"].every(L => rm.single[L]) ? rm.single.S.kg + rm.single.B.kg + rm.single.D.kg : null;
     const glS = sTot ? glPoints(sTot, bw, a.sexo || "F") : null;
     const fila = L => { const x = rm.out[L], s1 = rm.single[L], e = lb[L];
-      return `<tr><td><b>${LIFTS[L]}</b></td><td class="num">${x ? `${fmtKg(x.kg)} × ${x.reps}${x.rpe!=null?" @"+fmtNum(x.rpe):""}<div class="small muted">${fmtDate(x.fecha)}${x.comp?" · competencia":""}</div>` : "—"}</td><td class="num">${s1 ? `${fmtKg(s1.kg)}<div class="small muted">${fmtDate(s1.fecha)}</div>` : "—"}</td><td class="num">${e ? fmtKg(e) : "—"}</td></tr>`; };
+      return `<tr><td><b>${LIFTS[L]}</b></td><td class="num">${x ? `${fmtKg(x.kg)} × ${x.reps}${x.rpe!=null?" @"+fmtNum(x.rpe):""}<div class="small muted">${fY(x.fecha)}${x.comp?" · competencia":""}</div>` : "—"}</td><td class="num">${s1 ? `${fmtKg(s1.kg)}<div class="small muted">${fY(s1.fecha)}</div>` : "—"}</td><td class="num">${e ? fmtKg(e) : "—"}</td></tr>`; };
     const att = (L) => c[L].length ? c[L].map(a => a.ok ? fmtKg(a.kg) : `<s style="color:var(--bad)">${fmtKg(a.kg)}</s>`).join(" / ") : "—";
     return `<div class="card"><h3>${STAR} Marcas reales vs. RM esperado</h3>
       <p class="small muted">Marca real = lo que de verdad levantaste. RM esperado = e1RM estimado con la tabla RPE (las series sin RPE anotado cuentan como al fallo).</p>
@@ -1488,7 +1490,7 @@ function vProgreso(uid){
       ${["S","B","D"].map(fila).join("")}
       ${sTot ? `<tr><td><b>Total</b></td><td></td><td class="num"><b>${fmtKg(sTot)}</b>${glS ? `<div class="small muted">${fmt1(glS)} GL</div>` : ""}</td><td class="num"><b>${fmtKg(tot)}</b>${gl ? `<div class="small muted">${fmt1(gl)} GL</div>` : ""}</td></tr>` : ""}
       </tbody></table></div>
-      ${c ? `<div style="margin-top:12px"><div class="small muted" style="margin-bottom:6px">Última competencia · ${fmtDate(c.fecha)} (intentos; tachado = nulo)</div>
+      ${c ? `<div style="margin-top:12px"><div class="small muted" style="margin-bottom:6px">Última competencia · ${fY(c.fecha)} (intentos; tachado = nulo)</div>
         <div class="tablewrap"><table><tbody>${["S","B","D"].map(L => `<tr><td>${LIFTS[L]}</td><td class="num">${att(L)}</td><td class="num"><b>${c.best(L) ? fmtKg(c.best(L)) : "—"}</b></td></tr>`).join("")}
         ${c.tot ? `<tr><td><b>Total</b></td><td></td><td class="num"><b>${fmtKg(c.tot)} kg</b>${glC ? `<div class="small muted">${fmt1(glC)} GL${bw ? " con "+fmt1(bw)+" kg" : ""}</div>` : ""}</td></tr>` : ""}</tbody></table></div></div>` : ""}
     </div>`; })();
