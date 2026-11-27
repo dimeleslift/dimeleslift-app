@@ -2627,13 +2627,13 @@ async function uploadVideo(key, file){
 const SECCIONES = [["activacion","Activación"],["principal","Principal"],["core","Core"],["cardio","Cardio"],["calma","Vuelta a la calma"]];
 const SEC_LBL = Object.fromEntries(SECCIONES);
 const RPE_OPC = [
-  [4,"Muy fácil","6 o más repeticiones en recámara","#5FD38A"],
-  [5,"Fácil","5 repeticiones en recámara","#86DD6E"],
-  [6,"Cómodo","4 repeticiones en recámara","#A3E850"],
-  [7,"Moderado","3 repeticiones en recámara","#D9DC4F"],
-  [8,"Exigente","2 repeticiones en recámara","#F5C451"],
-  [9,"Muy difícil","1 repetición en recámara","#F59A5B"],
-  [10,"Al límite","0 en recámara: no podía hacer ni una más","#F06A6A"]];
+  [4,"Muy fácil","Puedo hacer seis o más","#5FD38A"],
+  [5,"Fácil","Puedo hacer cinco más","#86DD6E"],
+  [6,"Cómodo","Puedo hacer cuatro más","#A3E850"],
+  [7,"Moderado","Puedo hacer tres más","#D9DC4F"],
+  [8,"Exigente","Puedo hacer dos más","#F5C451"],
+  [9,"Muy difícil","Puedo hacer una más","#F59A5B"],
+  [10,"Al límite","No puedo hacer ninguna más","#F06A6A"]];
 function carita(c, tipo){
   const boca = tipo === "feliz" ? '<path d="M13 23 Q20 29 27 23" stroke="#000000" stroke-width="2.6" fill="none" stroke-linecap="round"/>' : tipo === "neutra" ? '<path d="M14 25 H26" stroke="#000000" stroke-width="2.6" stroke-linecap="round"/>' : '<path d="M13 27 Q20 21 27 27" stroke="#000000" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
   const ojos = tipo === "esfuerzo" ? '<path d="M11 14 L16 16.5 L11 19 M29 14 L24 16.5 L29 19" stroke="#000000" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' : '<circle cx="14.5" cy="16" r="2.3" fill="#000000"/><circle cx="25.5" cy="16" r="2.3" fill="#000000"/>';
@@ -2802,8 +2802,8 @@ function vGuiado(){
       <div class="gd-rpeicon"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="3" y="13" width="4" height="8" rx="2" fill="var(--acc)" opacity=".55"/><rect x="10" y="8" width="4" height="13" rx="2" fill="var(--acc)" opacity=".8"/><rect x="17" y="3" width="4" height="18" rx="2" fill="var(--acc)"/></svg></div>
       <h3>¿Qué tan difícil se sintió?</h3>
       ${intens ? `<div class="small" style="text-align:center;margin:-4px 0 6px">Objetivo de tu coach: <b>${esc(intens)}</b> · marca lo que sentiste de verdad</div>` : ""}
-      <p class="gd-rpesub">${nv(u) ? "Al terminar la serie, ¿cuántas repeticiones más crees que podrías haber hecho?" : "Piensa cuántas repeticiones más podías haber hecho al terminar la serie (repeticiones en recámara)."}</p>
-      <div class="gd-rpe">${(nv(u) ? RPE_OPC_NV : RPE_OPC).map(([v,l,dsc,c]) => `<button class="gd-rpeb" data-act="gdRpe" data-v="${v}" aria-pressed="${g.rpe===v}"><span class="gd-rpen" style="background:${c}">${v}</span><span class="gd-rpetx"><b>RPE ${v} · ${l}</b><span>${dsc}</span></span><span class="gd-rpeok" aria-hidden="true">${g.rpe===v ? "✓" : ""}</span></button>`).join("")}</div>
+      <p class="gd-rpesub">Al terminar la serie, ¿cuántas repeticiones más crees que podrías haber hecho?</p>
+      <div class="gd-rpe">${RPE_OPC.map(([v,l,dsc,c]) => `<button class="gd-rpeb" data-act="gdRpe" data-v="${v}" aria-pressed="${g.rpe===v}"><span class="gd-rpen" style="background:${c}">${v}</span><span class="gd-rpetx"><b>RPE ${v} · ${l}</b><span>${dsc}</span></span><span class="gd-rpeok" aria-hidden="true">${g.rpe===v ? "✓" : ""}</span></button>`).join("")}</div>
       <button class="gd-cta" data-act="gdOk" ${g.rpe == null ? "disabled" : ""}>Continuar <span aria-hidden="true">›</span></button></div>` : "";
   return `<div class="gd card">
     <div class="row between"><span class="gd-kicker">Ejercicio ${g.idx+1} de ${main.length}</span><span class="small muted">${fmtMin((Date.now()-g.ini)/60000)}</span></div>
@@ -3119,14 +3119,6 @@ const NV_COL = ["#DA45A4", "#A3E850"];
 function star5(c, cls){ return `<svg class="${cls || "nv-star"}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.7l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z" fill="${c}"/></svg>`; }
 
 /* ----- 1. Escala RPE conversacional ----- */
-const RPE_OPC_NV = [
-  [4,"Muy fácil","Podría haber hecho seis o más.","#5FD38A"],
-  [5,"Fácil","Podría haber hecho cinco más.","#86DD6E"],
-  [6,"Cómodo","Podría haber hecho cuatro más.","#A3E850"],
-  [7,"Moderado","Podría haber hecho tres más.","#D9DC4F"],
-  [8,"Exigente","Podría haber hecho dos más.","#F5C451"],
-  [9,"Muy difícil","Podría haber hecho una más.","#F59A5B"],
-  [10,"Al límite","No podría haber hecho ninguna más.","#F06A6A"]];
 
 /* ----- 2. Mejor marca comparable y aproximaciones ----- */
 // Mejor desempeño = la serie con el RM estimado más alto (sirve para comparar un single con una serie de 8).
