@@ -202,6 +202,66 @@
     setInterval(() => { if (!document.hidden) refreshAll(); }, 60000);
   }
 
+  const pendingPatches = new Map();
+  const isMap = value => value !== null && typeof value === "object" && !Array.isArray(value);
+
+  function recordChanges(before, after, path = []) {
+    if (before === after) return [];
+    if (!isMap(after)) {
+      return JSON.stringify(before) === JSON.stringify(after) ? [] : [{ path, value: after }];
+    }
+    const old = isMap(before) ? before : {};
+    const keys = new Set([...Object.keys(old), ...Object.keys(after)]);
+    return [...keys].flatMap(key => {
+      const field = [...path, key];
+      if (!Object.hasOwn(after, key)) return [{ path: field, remove: true }];
+      return recordChanges(Object.hasOwn(old, key) ? old[key] : undefined, after[key], field);
+    });
+  }
+
+  function applyRecordChanges(data, changes) {
+    const next = JSON.parse(JSON.stringify(data || {}));
+    for (const { path, value, remove } of changes) {
+      let target = next;
+      for (const key of path.slice(0, -1)) {
+        if (!Object.hasOwn(target, key) || !isMap(target[key])) {
+          if (remove) { target = null; break; }
+          Object.defineProperty(target, key, { value: {}, writable: true, enumerable: true, configurable: true });
+        }
+        target = target[key];
+      }
+      if (!target) continue;
+      const key = path[path.length - 1];
+      if (remove) delete target[key];
+      else Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true });
+    }
+    return next;
+  }
+
+  async function patchRecord(col, id, changes) {
+    // A competing write invalidates the timestamp filter. Read again and reapply only the changed fields.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data: row, error: readError } = await sb.from("docs")
+        .select("data,updated_at").eq("collection", col).eq("id", id).maybeSingle();
+      if (readError) throw mapErr(readError);
+      if (!changes.length) return row?.data || {};
+      const next = applyRecordChanges(row?.data, changes);
+      const updated_at = new Date(Math.max(Date.now(), (Date.parse(row?.updated_at) || 0) + 1)).toISOString();
+      if (!row) {
+        const { error } = await sb.from("docs").insert({ collection: col, id, data: next, updated_at });
+        if (error?.code === "23505") continue;
+        if (error) throw mapErr(error);
+        return next;
+      }
+      const update = sb.from("docs").update({ data: next, updated_at }).eq("collection", col).eq("id", id);
+      const versioned = row.updated_at == null ? update.is("updated_at", null) : update.eq("updated_at", row.updated_at);
+      const { data: saved, error } = await versioned.select("id").maybeSingle();
+      if (error) throw mapErr(error);
+      if (saved) return next;
+    }
+    throw new Error("No se pudo guardar después de varios cambios concurrentes.");
+  }
+
   const db = {
     collection(col) {
       return {
@@ -220,6 +280,24 @@
           const { error } = await sb.from("docs").upsert({ collection: col, id, data: clean, updated_at: new Date().toISOString() });
           if (error) throw mapErr(error);
           soon(col);
+        },
+        async patch(before, after, include) {
+          const clean = JSON.parse(JSON.stringify(after));
+          const changes = recordChanges(before, clean);
+          for (const path of include) {
+            const value = path.reduce((field, key) => field?.[key], clean);
+            changes.push(value === undefined ? { path, remove: true } : { path, value });
+          }
+          const previous = pendingPatches.get(path) || Promise.resolve();
+          const pending = previous.catch(() => {}).then(() => patchRecord(col, id, changes));
+          pendingPatches.set(path, pending);
+          try {
+            const saved = await pending;
+            soon(col);
+            return saved;
+          } finally {
+            if (pendingPatches.get(path) === pending) pendingPatches.delete(path);
+          }
         },
         async delete() {
           const { error } = await sb.from("docs").delete().eq("collection", col).eq("id", id);
