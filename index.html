@@ -1053,7 +1053,7 @@ function vEquipo(){
           <button class="btn sm" data-act="goto" data-tab="registros" data-id="${esc(id)}">Registros</button>
           <button class="btn sm ${id===PRUEBA_ID?"pri":"ghost"}" data-act="verAlumno" data-id="${esc(id)}">Ver como alumno</button>
           ${NV_AUTO(id) ? "" : `<button class="btn sm ghost" data-act="nvToggle" data-id="${esc(id)}">${a.beta ? "Desactivar novedades" : "Activar novedades"}</button>`}
-          ${id===PRUEBA_ID ? `<button class="btn sm ghost danger" data-act="pruebaBorrar">${S.confirmDel==="prueba" ? "Confirmar: borrar prueba" : "Borrar prueba"}</button>` : ""}
+          ${id===PRUEBA_ID ? `<button class="btn sm ghost" data-act="pruebaReiniciar">${S.confirmDel==="prueba" ? "Confirmar: dejar la prueba como nueva" : "Reiniciar prueba completa"}</button>` : ""}
         </div>
       </div>
     </div>`;
@@ -1200,17 +1200,76 @@ function semanaDePlantilla(k){
 
 /* ----- Alumna de prueba: vivir la experiencia del alumno ----- */
 const PRUEBA_ID = "prueba-coach";
+// Planificación sencilla de prueba: 2 semanas × 2 días. La semana 1 queda como «semana pasada» ya registrada
+// (para probar última marca, sugerencias, Mi progreso e Historial) y la semana 2 es la que se entrena y se reinicia.
 function programaPrueba(){
-  const id = n => S.ejByName[n.toLowerCase()] || "";
+  const id = (...ns) => { for(const n of ns){ const k = /^[SBD]$/.test(n) ? liftEj(n) : S.ejByName[n.toLowerCase()]; if(k) return k; } return ""; };
   const S_ = (n,reps,t,v) => ({n, reps, t, v});
-  const row = (n, series, nota="") => ({id:uid36("r"), ej:id(n), nota, series, ...(id(n) ? {} : {slot:"aislado"})});
-  const sem = (micro, vol, int, up) => ({micro, volPct:vol, intPct:int, dias:[
-    {nombre:"Día 1 · Sentadilla + Banca", tipo:"Sentadilla", ejercicios:[row("Sentadilla",[S_(1,5,"RPE",7+up),S_(3,5,"RPE",6.5+up)],"Bracing antes de bajar; profundidad bajo paralelo."), row("Press banca",[S_(1,6,"RPE",7+up),S_(3,6,"RPE",6.5+up)],"Pausa de 1 s en el pecho."), row("Remo con mancuerna",[S_(3,10,"RIR",2)]), row("Pallof press",[S_(3,12,"RIR",2)],"12 por lado.")]},
-    {nombre:"Día 2 · Peso muerto", tipo:"Peso muerto", ejercicios:[row("Peso muerto",[S_(1,4,"RPE",7+up),S_(3,4,"RPE",6.5+up)],"Empuja el suelo; barra pegada a las piernas."), row("Press militar",[S_(3,8,"RIR",2)]), row("Jalón al pecho",[S_(3,10,"RIR",2)]), row("Plancha con peso",[S_(3,30,"RIR",2)],"30 segundos por serie.")]},
-    {nombre:"Día 3 · Variantes", tipo:"Cuerpo completo", ejercicios:[row("Sentadilla con pausa",[S_(3,4,"RPE",6.5+up)],"Pausa de 2 s abajo."), row("Banca agarre cerrado",[S_(3,8,"RPE",7)]), row("Peso muerto rumano",[S_(3,8,"RIR",2)]), row("Face pull",[S_(3,15,"RIR",2)])]}]});
+  const row = (ej, series, nota="", sec) => ej ? {id:uid36("r"), ej, nota, series, ...(sec ? {sec} : {})} : null;
+  const dias = up => [
+    {nombre:"Día 1 · Sentadilla + Banca", tipo:"Sentadilla", ejercicios:[
+      row(id("Movilidad de dorsiflexión de tobillo"), [], "2 × 10 por lado", "activacion"),
+      row(id("S","Sentadilla con barra","Sentadilla"), [S_(1,5,"RPE",7+up), S_(3,5,"RPE",6.5+up)], "Bracing antes de bajar; profundidad bajo paralelo."),
+      row(id("B","Press banca de powerlifting","Press banca"), [S_(1,6,"RPE",7+up), S_(3,6,"RPE",6.5+up)], "Pausa de 1 s en el pecho."),
+      row(id("Remo con mancuernas en banco inclinado"), [S_(3,10,"RIR",2)]),
+      row(id("Plancha"), [], "3 × 30 segundos", "core"),
+      row(id("Estiramiento de aductores"), [], "1 minuto por lado", "calma")].filter(Boolean)},
+    {nombre:"Día 2 · Peso muerto", tipo:"Peso muerto", ejercicios:[
+      row(id("Puente de glúteos"), [], "2 × 12", "activacion"),
+      row(id("D","Peso muerto con barra","Peso muerto"), [S_(1,4,"RPE",7+up), S_(3,4,"RPE",6.5+up)], "Empuja el suelo; barra pegada a las piernas."),
+      row(id("Jalón al pecho abierto","Jalón al pecho rango completo"), [S_(3,10,"RIR",2)]),
+      row(id("Face pull"), [S_(3,15,"RIR",2)]),
+      row(id("Bicicleta estática"), [], "10 minutos suave", "cardio"),
+      row(id("Estiramiento de isquiotibiales 90/90"), [], "1 minuto por lado", "calma")].filter(Boolean)}];
   return {perfil:"competidor", nivel:"Intermedio", escalon:"3:1", bloques:[{id:uid36("b"), nombre:"Bloque de prueba · Fuerza base", objetivo:"Probar la app desde la vista de alumna",
     fase:{periodo:"Preparatorio", etapa:"General", orientacion:"Hipertrofia", mesociclo:"Carga progresiva"}, enfoque:["Técnica"], objetivos:["Preparatorio","General","Hipertrofia","Carga progresiva","Técnica"],
-    patrones:["rodilla","cadera"], carga:"Escalonada", nutri:"Normocalórica", inicio: mondayOf(TODAY), semanas:[sem("Acumulación",90,68,0), sem("Carga",95,72,.5)]}]};
+    patrones:["rodilla","cadera"], carga:"Escalonada", nutri:"Normocalórica", inicio: addDays(mondayOf(TODAY), -7),
+    semanas:[{micro:"Acumulación", volPct:90, intPct:68, dias:dias(0)}, {micro:"Carga", volPct:95, intPct:72, dias:dias(.5)}]}]};
+}
+// Registros de la «semana pasada» (semana 1) para que la prueba tenga historial
+function registrosPrueba(p){
+  const b = p.bloques[0]; const ini = b.inicio; const r25 = x => Math.round(x / 2.5) * 2.5;
+  const base = ej => { const e = S.ejercicios[ej] || {}; const n = (e.nombre || "").toLowerCase();
+    const L = e.lift || (/sentadilla/.test(n) ? "S" : /banca/.test(n) ? "B" : /peso muerto/.test(n) ? "D" : "");
+    return L === "S" ? 70 : L === "B" ? 40 : L === "D" ? 90 : /remo/.test(n) ? 14 : /jal[oó]n/.test(n) ? 35 : /face pull/.test(n) ? 15 : null; };
+  const entradas = {}, hechos = {}, sesiones = {}, checkins = {};
+  (b.semanas[0]?.dias || []).forEach((day, d) => {
+    const fecha = addDays(ini, d * 2); const dk = `${b.id}|0|${d}`;
+    day.ejercicios.forEach(r => { const pl = planDe(r); if(!pl.length) return; const kg = base(r.ej);
+      entradas[`${dk}|${r.id}`] = {ej:r.ej, b:b.id, w:0, d, fecha, nota:"", videos:[], sets: pl.map((gr, i) => ({
+        peso: kg == null ? null : (i === 0 || !/RPE/.test(gr.t) ? kg : r25(kg * .925)), reps: +gr.reps || 1,
+        rpe: gr.t === "RPE" ? +gr.v : gr.t === "RIR" ? 10 - (+gr.v || 0) : null, hecho:true}))}; });
+    hechos[dk] = fecha;
+    sesiones[dk] = {ini:`${fecha}T22:00:00.000Z`, fin:`${fecha}T23:05:00.000Z`, min:65, dolor:null, rpeG:7, cargaInt:455};
+    const c = {fecha, ts:`${fecha}T21:58:00.000Z`, sue:4, ene:4, cue:4, est:3, ani:4}; c.total = ckTotal(c); c.color = ckColor(c); checkins[dk] = c;
+  });
+  return {entradas, hechos, sesiones, checkins, obs:{}};
+}
+async function crearPrueba(conCorreo){
+  const correo = conCorreo ? (S.meEmail || prompt("¿A qué correo te envío el aviso?") || "") : (S.meEmail || "");
+  const a = {...(S.alumnos[PRUEBA_ID] || {}), nombre:"Les (alumna de prueba)", correo, sexo:"F", disciplina:"Powerlifting", creado:TODAY, prueba:true};
+  if(!await write("alumnos/"+PRUEBA_ID, a)) return false; S.alumnos[PRUEBA_ID] = a;
+  const p = programaPrueba(); if(!await write("programas/"+PRUEBA_ID, p)) return false; S.prog[PRUEBA_ID] = p;
+  const rg = registrosPrueba(p); if(!await write("registros/"+PRUEBA_ID, rg, "Alumna de prueba lista: planificación cargada.")) return false; S.reg[PRUEBA_ID] = rg;
+  try{ await S.db.doc("feedback/"+PRUEBA_ID).delete(); }catch(e){} delete S.fb[PRUEBA_ID];
+  pruebaLimpiarLocal(); S.cur = S.cur || PRUEBA_ID; render();
+  if(conCorreo && correo) await enviarCorreo(PRUEBA_ID, {bi:0, wi: currentWeekIdx(p.bloques[0])});
+  return true;
+}
+function pruebaLimpiarLocal(){ lsSet("dll_gd_"+PRUEBA_ID, null); if(S.gd && viewUid() === PRUEBA_ID) S.gd = null; S.ckP = {}; S.plRpeg = {}; if(S.av?.uid === PRUEBA_ID) S.av = null; }
+// La alumna de prueba vuelve a existir sola si falta (la coach la usa para probar todo)
+async function ensurePrueba(){
+  if(!S.isOwner || S.pruebaAuto || S.alumnos[PRUEBA_ID] || S.stale) return;
+  if(!["alumnos","programas","registros","ejercicios","coach"].every(c => S.loaded[c]) || !Object.keys(S.ejercicios || {}).length) return;
+  S.pruebaAuto = true; await crearPrueba(false);
+}
+// Deja la sesión de esta semana como nueva: borra registros, check-in, RPE y «hecho» de los días de la semana actual
+async function pruebaRepetir(silencioso){
+  const u = PRUEBA_ID; const p = S.prog[u]; const b = p?.bloques?.[0]; if(!b) return false;
+  const rg = JSON.parse(JSON.stringify(S.reg[u] || {})); const pref = `${b.id}|1|`;
+  for(const k of ["entradas","hechos","sesiones","checkins","obs"]){ const o = rg[k] || {}; for(const key of Object.keys(o)) if(key.startsWith(pref)) delete o[key]; rg[k] = o; }
+  if(!await write("registros/"+u, rg, silencioso ? undefined : "Prueba reiniciada: puedes entrenar de nuevo.")) return false;
+  S.reg[u] = rg; pruebaLimpiarLocal(); render(); window.scrollTo(0,0); return true;
 }
 /* ----- Inscripción de alumnos ----- */
 // Les inscribe al alumno (doc "pend-…"); cuando el alumno entra por primera vez con ese correo, la app lo vincula sola
@@ -1922,7 +1981,8 @@ function vEntrenar(){
   const tabs = `<div class="daytabs">${dias.map((d,i) => `<button class="daytab" data-act="avDay" data-i="${i}" aria-pressed="${!S.avQ && i===sel.d}">${esc(d.nombre && !/^Día \d+$/.test(d.nombre) ? "Día "+(i+1) : d.nombre || "Día "+(i+1))}${dayDone(i) ? ' <span class="ok">✓</span>' : ""}</button>`).join("")}<button class="daytab" data-act="avQ" aria-pressed="${!!S.avQ}">${nv(u) ? "Calendario" : "Cuestionario"}</button></div>`;
   const weekSel = relW(b) > 1 || p.bloques.length > 1 ? `<details class="small muted"><summary style="cursor:pointer">Ver bloques y semanas</summary><div style="margin-top:8px">${pickerSel(p, sel, "av")}</div></details>` : "";
   const ci = compInfo(p);
-  const head = `<div class="row between"><div><h2>${esc(b.nombre)}</h2><div class="small muted">Semana ${sel.w+1} de ${b.semanas.length}${b.semanas[sel.w]?.micro ? " · "+esc(b.semanas[sel.w].micro) : ""}${day?.nombre ? " · "+esc(day.nombre) : ""}</div></div>${ci && ci.semanas >= 0 ? `<span class="chip pk">${esc(ci.nombre||"Competencia")} · faltan ${ci.semanas} sem</span>` : ""}</div>
+  const avisoPrueba = u === PRUEBA_ID ? `<div class="banner pk"><span><b>Modo prueba.</b> Al tocar «Listo» en el resumen, la sesión vuelve a empezar. La semana 1 queda como historial.</span><button class="btn sm" data-act="pruebaRepetir">Empezar de nuevo</button></div>` : "";
+  const head = avisoPrueba + `<div class="row between"><div><h2>${esc(b.nombre)}</h2><div class="small muted">Semana ${sel.w+1} de ${b.semanas.length}${b.semanas[sel.w]?.micro ? " · "+esc(b.semanas[sel.w].micro) : ""}${day?.nombre ? " · "+esc(day.nombre) : ""}</div></div>${ci && ci.semanas >= 0 ? `<span class="chip pk">${esc(ci.nombre||"Competencia")} · faltan ${ci.semanas} sem</span>` : ""}</div>
     ${relW(b) < b.semanas.length ? `<div class="small muted">${relW(b)+1 === b.semanas.length ? "La semana "+b.semanas.length+" la libera" : "Las semanas "+(relW(b)+1)+" a "+b.semanas.length+" las libera"} tu coach más adelante.</div>` : ""}`;
   const modoSel = `<div class="modesel" role="tablist" aria-label="Modo de entrenar"><button class="modeb" data-act="modo" data-v="guiado" aria-pressed="${getModo()==="guiado"}">Guiado</button><button class="modeb" data-act="modo" data-v="planilla" aria-pressed="${getModo()==="planilla"}">Planilla</button></div>`;
   if(S.avQ) return pagoBanner(p) + head + tabs + (nv(u) ? "" : cuestCard(u)) + testiCard(u, p) + calCard(u, p);
@@ -2221,17 +2281,9 @@ const ACT = {
   delDemo: async d => { if(S.confirmDel !== "demo:"+d.id){ S.confirmDel = "demo:"+d.id; render(); return; } S.confirmDel = null; const old = S.ejDb[d.id]?.demo;
     if(await setEjDoc(d.id, {demo: undefined}, "Video quitado.") && old?.id){ try{ await S.assets.delete(old.id); }catch(e){} } },
   delRowVid: d => { const r = getPath(S.draft, d.p); if(r){ delete r.video; markDirty(); render(); } },
-  pruebaCrear: async () => {
-    const correo = S.meEmail || prompt("¿A qué correo te envío el aviso?") || "";
-    const a = {nombre:"Les (alumna de prueba)", correo, sexo:"F", disciplina:"Powerlifting", creado:TODAY, prueba:true};
-    if(!await write("alumnos/"+PRUEBA_ID, a)) return; S.alumnos[PRUEBA_ID] = a;
-    const p = programaPrueba(); if(!await write("programas/"+PRUEBA_ID, p, "Programa de prueba guardado.")) return; S.prog[PRUEBA_ID] = p;
-    S.cur = PRUEBA_ID; render();
-    if(correo) await enviarCorreo(PRUEBA_ID, {bi:0, wi: currentWeekIdx(p.bloques[0])});
-    else toast("No tengo tu correo: usa “Enviar correo ahora” en Programar.", true); },
-  pruebaBorrar: async () => { if(S.confirmDel !== "prueba"){ S.confirmDel = "prueba"; render(); return; } S.confirmDel = null;
-    for(const c of ["alumnos","programas","registros","feedback"]){ try{ await S.db.doc(c+"/"+PRUEBA_ID).delete(); }catch(e){} }
-    delete S.alumnos[PRUEBA_ID]; delete S.prog[PRUEBA_ID]; delete S.reg[PRUEBA_ID]; delete S.fb[PRUEBA_ID]; if(S.cur === PRUEBA_ID) S.cur = Object.keys(S.alumnos)[0] || null; toast("Prueba borrada."); render(); },
+  pruebaCrear: async () => { await crearPrueba(true); },
+  pruebaReiniciar: async () => { if(S.confirmDel !== "prueba"){ S.confirmDel = "prueba"; render(); return; } S.confirmDel = null; await crearPrueba(false); },
+  pruebaRepetir: async () => { await pruebaRepetir(); },
   inscNew: () => { S.insc = {}; render(); },
   inscCancel: () => { S.insc = null; render(); },
   inscSave: async () => { const v = id => $("#"+id)?.value.trim() || "";
@@ -2847,7 +2899,9 @@ Object.assign(ACT, {
     const doc = {...(S.reg[u]||{}), entradas, hechos, sesiones, obs};
     if(await write("registros/"+u, doc, "¡Sesión terminada! Buen trabajo.")){ S.reg[u] = doc; g.fase = nv(u) ? "rpeg" : "resumen"; g.rpeG = null; gdSave(); render(); window.scrollTo(0,0); } },
   gdResumen: () => { const c = gdCtx(); if(!c) return; S.gd = {dk:c.dk, dia:TODAY, ini:Date.now(), idx:0, fase:"resumen", checks:{}}; render(); },
-  gdCerrar: () => { S.gd = null; lsSet("dll_gd_"+viewUid(), null); render(); window.scrollTo(0,0); },
+  gdCerrar: async () => { const u = viewUid(); S.gd = null; lsSet("dll_gd_"+u, null);
+    if(u === PRUEBA_ID){ if(await pruebaRepetir(true)) toast("Sesión de prueba terminada: quedó lista para empezar de nuevo."); return; }
+    render(); window.scrollTo(0,0); },
   gdShare: d => { compartirHistoria(d.k); }
 });
 document.addEventListener("input", e => { const d = e.target.dataset; if(d.gd && S.gd?.cur){ S.gd.cur[d.gd] = String(e.target.value).replace(",", "."); gdSave(); } });
@@ -3298,7 +3352,7 @@ function listen(col, onDocs){
     const m = {}; snap.docs.forEach(d => { if(d.exists) m[d.id] = d.data(); });
     onDocs(m);
     if(!snap.metadata.fromCache){ clearTimeout(timer); S.loaded[col] = true; }
-    checkReady(); scheduleRender();
+    checkReady(); scheduleRender(); if(S.isOwner) setTimeout(ensurePrueba, 0);
   }, () => { clearTimeout(timer); S.loaded[col] = true; checkReady(); scheduleRender(); });
 }
 function checkReady(){
