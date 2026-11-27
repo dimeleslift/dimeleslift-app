@@ -2736,6 +2736,28 @@ function barraSvg(valor){
   return `<svg class="gd-bar" viewBox="0 0 300 80" aria-hidden="true"><rect x="2" y="37" width="296" height="6" rx="3" fill="#888"/>${dibujo}</svg><div class="small">Barra de 20 kg · Por lado: ${piezas.join(" · ")}</div>`;
 }
 
+function cargaProximaSerie(u, r, gr, anterior, borrador){
+  if(!gr || !requiereKilos(r, gr)) return null;
+  const kg = numOrNull(anterior?.peso);
+  const rpe = numOrNull(anterior?.rpe);
+  const objetivo = rpeOf(gr);
+  const editado = numOrNull(borrador?.peso);
+  if(kilosValidos(editado)) return {kg:editado, titulo:"Peso de la próxima serie"};
+  if(gr.t === "%" && vNum(gr.v) > 0){
+    const prescrito = suggestion(u, r.ej, gr);
+    if(kilosValidos(prescrito)) return {kg:prescrito, titulo:"Peso sugerido según el porcentaje programado"};
+  }
+  if(kilosValidos(kg) && rpe >= 4 && rpe <= 10 && anterior.reps > 0 && gr.reps > 0 && !esTiempo(r, gr)){
+    const meta = objetivo ?? rpe;
+    const estimado = e1rm(kg, anterior.reps, rpe) * pctOf(gr.reps, meta) / 100;
+    const redondeado = esMancuerna(r.ej) ? Math.round(estimado) : round25(estimado);
+    const peso = Number(gr.reps) === Number(anterior.reps) && meta === rpe ? kg : redondeado;
+    return {kg:kilosValidos(peso) ? peso : kg, titulo:"Peso sugerido según tu RPE"};
+  }
+  if(kilosValidos(kg)) return {kg, titulo:"Peso de referencia de la serie anterior"};
+  const sugerido = suggestion(u, r.ej, gr);
+  return kilosValidos(sugerido) ? {kg:sugerido, titulo:"Peso sugerido para la próxima serie"} : null;
+}
 function vGuiado(){
   const c = gdCtx(); if(!c) return `<div class="empty">Este día no tiene ejercicios.</div>`;
   const {u, b, day, dk, main, act, cierre, ent} = c;
@@ -2772,6 +2794,7 @@ function vGuiado(){
   const r = main[g.idx]; const key = `${dk}|${r.id}`; const plan = planDe(r); const draft = draftDe(key, r, ent);
   const si = draft.findIndex(s => !s.hecho); const sIdx = si < 0 ? plan.length : si;
   const sig = main[g.idx+1];
+  const proximaCarga = g.fase !== "siguiente" ? cargaProximaSerie(u, r, plan[sIdx], draft[sIdx-1], draft[sIdx]) : null;
   if(g.fase === "descanso" || g.fase === "siguiente"){
     const left = Math.max(0, (g.restEnd - Date.now())/1000);
     const nxt = g.fase === "siguiente" ? sig : r;
@@ -2782,6 +2805,7 @@ function vGuiado(){
       ${g.fase === "siguiente" && descargar(r, draft) ? `<div class="gd-aviso">¡No olvides descargar la máquina y ordenar los implementos utilizados!</div>` : ""}
       ${nv(u) ? msgHtml(g.fase === "siguiente" ? msgDe("mot", u, dk, "sig"+g.idx) : msgDe(sIdx % 2 ? "edu" : "mot", u, dk, "des"+g.idx+"-"+sIdx), g.idx + sIdx) : ""}
       <div class="gd-next"><span class="small muted">${g.fase === "siguiente" ? "Siguiente" : "Ahora"}</span><b>${esc(nxt ? ejName(nxt.ej) : "Cierre de la sesión")}</b>${g.fase === "descanso" ? `<span class="small muted">Serie ${Math.min(sIdx+1, plan.length)} de ${plan.length}</span>` : ""}
+      ${g.fase === "descanso" && proximaCarga ? `<span class="small">${proximaCarga.titulo}</span><b style="color:var(--acc)">${fmtKg(proximaCarga.kg)} kg${esMancuerna(r.ej) ? " por mancuerna" : ""}</b>${esBarra(r.ej) ? barraSvg(proximaCarga.kg) : ""}` : ""}
       ${g.fase === "siguiente" && nxt ? (() => { const ci = cargaInfo(u, nxt, planDe(nxt)[0], `${dk}|${nxt.id}`); const kgU = esMancuerna(nxt.ej) ? " kg c/u" : " kg";
         if(nv(u)){ const mm = requiereKilos(nxt, planDe(nxt)[0]) && !esTiempo(nxt, planDe(nxt)[0]) ? mejorMarca(u, nxt.ej, `${dk}|${nxt.id}`) : null; const sg2 = ci?.sg;
           return mm || sg2 ? `<span class="small">${mm ? `Tu mejor marca: <b>${fmtKg(mm.peso)}${kgU} × ${mm.reps}</b>` : "Sin marcas anteriores"}${sg2 ? ` · Sugerencia de tu coach: <b style="color:var(--acc)">${fmtKg(sg2)}${kgU}</b>` : ""}</span>` : ""; }
@@ -2793,7 +2817,7 @@ function vGuiado(){
   const gr = plan[sIdx]; const conCarga = requiereKilos(r, gr);
   const sg = conCarga ? suggestion(u, r.ej, gr) : null;
   const prev = sIdx > 0 ? draft[sIdx-1] : null;
-  if(!g.cur || g.cur.key !== key || g.cur.i !== sIdx) g.cur = {key, i:sIdx, peso: conCarga ? (numOrNull(draft[sIdx].peso) ?? numOrNull(prev?.peso) ?? sg ?? "") : "", reps: numOrNull(draft[sIdx].reps) ?? (+gr.reps || "")};
+  if(!g.cur || g.cur.key !== key || g.cur.i !== sIdx) g.cur = {key, i:sIdx, peso: conCarga ? (proximaCarga?.kg ?? "") : "", reps: numOrNull(draft[sIdx].reps) ?? (+gr.reps || "")};
   const e = S.ejercicios[r.ej]; const manc = esMancuerna(r.ej); const tmp = esTiempo(r, gr); const uni = unidadDe(r, gr); const barra = conCarga && !tmp && esBarra(r.ej);
   const intens = gr.t === "%" ? (gr.v ? vTxt(gr.v)+"%" : "") : gr.v != null && gr.v !== "" ? gr.t+" "+vTxt(gr.v) : "";
   const hechas = draft.filter(s => s.hecho).length;
