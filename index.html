@@ -673,12 +673,12 @@ function entries(uid){
     let best = 0, top = null;
     (e.sets||[]).forEach((s,i) => {
       if(s.hecho === false) return;
+      // Sin RPE anotado la serie se toma como al fallo (RPE 10): es el mínimo garantizado, nunca infla el RM.
+      // El RPE planificado solo se muestra como referencia en el tooltip.
       const real = numOrNull(s.rpe), plan = pl[i] ?? pl[pl.length-1] ?? null;
-      const rpe = real ?? plan, src = real != null ? "real" : plan != null ? "plan" : null;
-      const v = e1rm(s.peso, s.reps, rpe ?? 10);
-      // Las series sin ningún RPE se asumen al fallo: solo cuentan si no hay otra mejor
-      const score = src ? v : v*0.999;
-      if(v && (!top || score > top.score)) { best = v; top = {peso:+s.peso, reps:+s.reps, rpe, src, score}; }
+      const v = e1rm(s.peso, s.reps, real ?? 10);
+      const score = real != null ? v : v*0.999;
+      if(v && (!top || score > top.score)) { best = v; top = {peso:+s.peso, reps:+s.reps, rpe:real, plan, src: real != null ? "real" : null, score}; }
     });
     return {k, ...e, best, top};
   }).filter(e => e.ej);
@@ -1483,7 +1483,7 @@ function vProgreso(uid){
       return `<tr><td><b>${LIFTS[L]}</b></td><td class="num">${x ? `${fmtKg(x.kg)} × ${x.reps}${x.rpe!=null?" @"+fmtNum(x.rpe):""}<div class="small muted">${fmtDate(x.fecha)}${x.comp?" · competencia":""}</div>` : "—"}</td><td class="num">${s1 ? `${fmtKg(s1.kg)}<div class="small muted">${fmtDate(s1.fecha)}</div>` : "—"}</td><td class="num">${e ? fmtKg(e) : "—"}</td></tr>`; };
     const att = (L) => c[L].length ? c[L].map(a => a.ok ? fmtKg(a.kg) : `<s style="color:var(--bad)">${fmtKg(a.kg)}</s>`).join(" / ") : "—";
     return `<div class="card"><h3>${STAR} Marcas reales vs. RM esperado</h3>
-      <p class="small muted">Marca real = lo que de verdad levantaste. RM esperado = e1RM estimado con la tabla RPE (si no anotaste el RPE, se usa el planificado).</p>
+      <p class="small muted">Marca real = lo que de verdad levantaste. RM esperado = e1RM estimado con la tabla RPE (las series sin RPE anotado cuentan como al fallo).</p>
       <div class="tablewrap"><table><thead><tr><th></th><th>Mejor serie real</th><th>Mejor single</th><th>RM esperado</th></tr></thead><tbody>
       ${["S","B","D"].map(fila).join("")}
       ${sTot ? `<tr><td><b>Total</b></td><td></td><td class="num"><b>${fmtKg(sTot)}</b>${glS ? `<div class="small muted">${fmt1(glS)} GL</div>` : ""}</td><td class="num"><b>${fmtKg(tot)}</b>${gl ? `<div class="small muted">${fmt1(gl)} GL</div>` : ""}</td></tr>` : ""}
@@ -1526,7 +1526,7 @@ function vProgreso(uid){
     ${pesos.length ? `<button class="btn ghost sm" data-act="delPeso" data-f="${esc(pesos[pesos.length-1].x)}">${S.confirmDel==="pz" ? "Confirmar: borrar último" : "Borrar último"}</button>` : ""}</div></div>`;
   return `<div class="row between"><h2>Progreso${S.isOwner && S.role==="coach" ? " de "+esc(a.nombre||"") : ""}</h2><span class="small muted">e1RM estimado con la tabla RPE</span></div>
   <div class="tiles">${tiles}</div>
-  <div class="card"><h3>${STAR} Fuerza en el tiempo</h3>${ch.bands.length ? `<p class="small muted">Franjas: bloques del programa · zonas rayadas: descargas${ch.comp ? " · línea rosada: competencia" : ""}.</p>` : ""}${liftSeries.length ? `<p class="small muted" style="margin-top:-4px">Pasa el cursor o toca un punto para ver de dónde sale el dato. Punto hueco = serie sin RPE (se asume al fallo, el e1RM puede salir bajo).</p>` + lineChart(liftSeries, {...ch, tip: p => tipE1(uid, p)}) : `<div class="empty">${salud ? "Aún no hay registros." : "Aún no hay registros de sentadilla, banca o peso muerto."}</div>`}</div>
+  <div class="card"><h3>${STAR} Fuerza en el tiempo</h3>${ch.bands.length ? `<p class="small muted">Franjas: bloques del programa · zonas rayadas: descargas${ch.comp ? " · línea rosada: competencia" : ""}.</p>` : ""}${liftSeries.length ? `<p class="small muted" style="margin-top:-4px">Pasa el cursor o toca un punto para ver de dónde sale el dato. Punto hueco = serie sin RPE anotado: se calcula como si fuera al fallo, así que es un mínimo y puede verse como una baja que no es real.</p>` + lineChart(liftSeries, {...ch, tip: p => tipE1(uid, p)}) : `<div class="empty">${salud ? "Aún no hay registros." : "Aún no hay registros de sentadilla, banca o peso muerto."}</div>`}</div>
   ${marcasCard}
   ${track}
   ${resumen}
@@ -1585,9 +1585,9 @@ function tipE1(uid, p){
   const e = p.src; if(!e) return `${fmtDate(p.x)} · ${fmtKg(p.y)} kg`;
   const b = (S.prog[uid]?.bloques||[]).find(x => x.id === e.b); const dia = b?.semanas?.[e.w]?.dias?.[e.d];
   const t = e.top || {};
-  const rpeTxt = t.src === "real" ? `@${fmtNum(t.rpe)} (RPE anotado)` : t.src === "plan" ? `@${fmtNum(t.rpe)} (RPE planificado, no anotado)` : "sin RPE (se asume al fallo)";
+  const rpeTxt = t.src === "real" ? `@${fmtNum(t.rpe)}` : `sin RPE anotado${t.plan != null ? " (planificado @"+fmtNum(t.plan)+")" : ""}`;
   const fecha = new Date(p.x+"T12:00").toLocaleDateString("es-CL",{day:"numeric",month:"short",year:"numeric"});
-  return `${fecha}${b ? " · "+(b.nombre||"Bloque") : ""} · S${(e.w||0)+1}${dia?.nombre ? " · "+dia.nombre : ""}\n${ejName(e.ej)}: ${fmtKg(t.peso)} kg × ${t.reps} ${rpeTxt}\ne1RM ${fmtKg(p.y)} kg`;
+  return `${fecha}${b ? " · "+(b.nombre||"Bloque") : ""} · S${(e.w||0)+1}${dia?.nombre ? " · "+dia.nombre : ""}\n${ejName(e.ej)}: ${fmtKg(t.peso)} kg × ${t.reps} ${rpeTxt}\n${t.src === "real" ? "e1RM "+fmtKg(p.y)+" kg" : "e1RM mínimo "+fmtKg(p.y)+" kg (calculado como si fuera al fallo)"}`;
 }
 // Tooltip flotante (cursor en PC, toque en celular)
 (function(){
