@@ -378,6 +378,39 @@ div.tp-hb{cursor:default}
 .tp-f{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit}
 .tp-f[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#000000}
 .tp-aviso{text-align:center;margin:8px 4px 0}
+/* Carrusel de tips + panel de detalle (27 nov 2026) */
+.tp-car{display:flex;flex-direction:column;gap:12px;min-width:0}
+.tp-sechead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 2px -2px;min-height:40px}
+.tp-sechead .sechead{margin:0}
+.tp-arrows{display:flex;gap:8px}
+.tp-arr{width:40px;height:40px;border-radius:999px;border:1px solid var(--campo);background:var(--panel);color:var(--text);display:grid;place-items:center;cursor:pointer;padding:0}
+.tp-arr svg{width:18px;height:18px}
+.tp-arr:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.tp-arr:disabled{opacity:.3;cursor:default}
+.tp-car.fits .tp-arrows{display:none}
+.tp-track{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:3px;margin:-3px;scroll-padding:0 3px;min-width:0;border-radius:22px}
+.tp-track::-webkit-scrollbar{display:none}
+.tp-slide{flex:0 0 calc(100% - 44px);scroll-snap-align:start;display:flex;min-width:0}
+.tp-slide:only-child{flex-basis:100%}
+.tp-slide:last-child{scroll-snap-align:end}
+.tp-slide>.tp-card{flex:1;min-width:0}
+.tp-leer{margin-top:auto;align-self:flex-start;color:var(--acc);border-color:var(--acc);font-weight:800}
+.tp-track:focus-visible,.tp-arr:focus-visible,.tp-fav:focus-visible,.tp-leer:focus-visible,.tp-f:focus-visible,.tp-x:focus-visible,.tp-src summary:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+.tp-fav{border-radius:999px}
+@media (max-width:699px){.tp-arrows{display:none}}
+@media (min-width:700px){.tp-track{gap:16px}.tp-slide,.tp-slide:only-child{flex-basis:calc((100% - 16px) / 2)}}
+@media (min-width:1000px){.tp-slide,.tp-slide:only-child{flex-basis:calc((100% - 32px) / 3)}}
+@media (prefers-reduced-motion:reduce){.tp-track{scroll-behavior:auto}}
+html.tp-lock{overflow:hidden}
+.tp-panelbg{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:45}
+.tp-panel{position:fixed;z-index:46;left:0;right:0;bottom:0;max-height:88vh;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);border-radius:24px 24px 0 0;border-top:1px solid var(--line);padding:12px 18px 26px;display:flex;flex-direction:column;gap:14px;outline:none}
+.tp-panel h3{text-transform:none;font-size:1.35rem;line-height:1.2;margin:0}
+.tp-ptop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tp-ptop>div{display:flex;align-items:center;gap:4px}
+.tp-x{width:40px;height:40px;border-radius:999px;border:1px solid var(--campo);background:var(--panel2);color:var(--text);display:grid;place-items:center;cursor:pointer;padding:0}
+.tp-x svg{width:16px;height:16px}
+.tp-pclose{align-self:stretch;margin-top:4px}
+@media (min-width:700px){.tp-panel{left:auto;top:0;width:min(460px,100%);max-height:none;border-radius:24px 0 0 24px;border-top:0;border-left:1px solid var(--line);padding:22px 24px 30px}.tp-panel .gd-grab{display:none}}
 @media (max-width:480px){.tp-go{flex-direction:column;align-items:stretch}.tp-cta{width:100%}}
 </style>
 <script>
@@ -931,31 +964,124 @@ const TIPS = [
 function tipFavs(u){ try{ const v = JSON.parse(lsGet("dll_tipfav_" + u) || "[]"); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
 function tipDelDia(){ let h = 0; for(const ch of TODAY) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return TIPS[h % TIPS.length]; }
 const tipCatName = c => (TIP_CATS.find(x => x[0] === c) || ["", ""])[1];
-function tipCard(tp, u, destacado){
-  const fav = tipFavs(u).includes(tp.id); const open = destacado || S.tipOpen === tp.id;
-  const favBtn = `<button class="tp-fav" data-act="tipFav" data-id="${tp.id}" aria-pressed="${fav}" aria-label="${fav ? "Quitar de guardados" : "Guardar tip"}">${star5(fav ? NV_COL[1] : "none", "tp-favs")}</button>`;
-  const cab = `<span class="tp-cat">${star5(NV_COL[0], "nv-star")}${destacado ? "Tip del día · " : ""}${esc(tipCatName(tp.cat))}</span>
+function tipFavBtn(tp, u){
+  const fav = tipFavs(u).includes(tp.id);
+  return `<button class="tp-fav" data-act="tipFav" data-id="${tp.id}" aria-pressed="${fav}" aria-label="${fav ? "Quitar de guardados" : "Guardar"}: ${esc(tp.t)}">${star5(fav ? NV_COL[1] : "none", "tp-favs")}</button>`;
+}
+function tipCab(tp, prefijo){
+  return `<span class="tp-cat">${star5(NV_COL[0], "nv-star")}${prefijo || ""}${esc(tipCatName(tp.cat))}</span>
     <h3>${esc(tp.t)}</h3>
     <div class="tp-dato"><b>${esc(tp.dato)}</b><span>${esc(tp.datoTx)}</span></div>`;
-  return `<article class="card tp-card${destacado ? " tp-hoy" : ""}${open ? " open" : ""}">
-    <div class="tp-head">${destacado ? `<div class="tp-hb">${cab}</div>` : `<button class="tp-hb" data-act="tipOpen" data-id="${tp.id}" aria-expanded="${open}">${cab}<span class="tp-mas">${open ? "Cerrar" : "Leer más"}</span></button>`}${favBtn}</div>
-    ${open ? `<p><span class="tp-lbl">Lo que dice la evidencia</span>${esc(tp.ev)}</p>
+}
+const tipCuerpo = tp => `<p><span class="tp-lbl">Lo que dice la evidencia</span>${esc(tp.ev)}</p>
     <p class="tp-prac"><span class="tp-lbl">En la práctica</span>${esc(tp.pr)}</p>
-    <details class="tp-src"><summary>Fuente: ${esc(tp.src)}</summary><p>${esc(tp.ref)}</p></details>` : ""}
+    <details class="tp-src"><summary>Fuente: ${esc(tp.src)}</summary><p>${esc(tp.ref)}</p></details>`;
+// Tip del día: tarjeta abierta completa
+function tipCard(tp, u){
+  return `<article class="card tp-card tp-hoy open">
+    <div class="tp-head"><div class="tp-hb">${tipCab(tp, "Tip del día · ")}</div>${tipFavBtn(tp, u)}</div>
+    ${tipCuerpo(tp)}
   </article>`;
 }
+// Tarjeta plegada del carrusel: categoría, título, dato, estrella y «Leer más»
+function tipSlideCard(tp, u){
+  return `<article class="card tp-card">
+    <div class="tp-head"><div class="tp-hb">${tipCab(tp)}</div>${tipFavBtn(tp, u)}</div>
+    <button class="btn sm tp-leer" data-act="tipOpen" data-id="${tp.id}" aria-haspopup="dialog" aria-label="Leer más: ${esc(tp.t)}">Leer más</button>
+  </article>`;
+}
+const TIP_ICO = {
+  prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>'
+};
+function tipCarousel(lista, u, cat, favs){
+  const n = lista.length;
+  const flechas = n > 1 ? `<div class="tp-arrows">
+      <button class="tp-arr" data-act="tipStep" data-dir="-1" aria-controls="tp-track" aria-label="Tip anterior">${TIP_ICO.prev}</button>
+      <button class="tp-arr" data-act="tipStep" data-dir="1" aria-controls="tp-track" aria-label="Tip siguiente">${TIP_ICO.next}</button></div>` : "";
+  const filtros = `<div class="tp-filtros" role="group" aria-label="Filtrar tips">${TIP_CATS.map(([k, l]) => `<button class="tp-f" data-act="tipCat" data-v="${k}" aria-pressed="${k === cat}">${l}${k === "guardados" && favs.length ? ` · ${favs.length}` : ""}</button>`).join("")}</div>`;
+  const vacio = cat === "guardados" ? "Aún no tienes consejos guardados" : "No hay tips en esta categoría.";
+  const track = n ? `<div class="tp-track" id="tp-track" tabindex="0" role="region" aria-roledescription="carrusel" aria-label="Tips de salud, ${n} ${n === 1 ? "tarjeta" : "tarjetas"}. Usa las flechas del teclado para avanzar.">
+      ${lista.map((t, i) => `<div class="tp-slide" role="group" aria-roledescription="tarjeta" aria-label="${i + 1} de ${n}">${tipSlideCard(t, u)}</div>`).join("")}
+    </div>` : `<div class="empty">${vacio}</div>`;
+  return `<section class="tp-car${n > 1 ? "" : " fits"}" id="tp-car" aria-labelledby="tp-h">
+    <div class="tp-sechead"><div class="sechead" id="tp-h">Tips de salud</div>${flechas}</div>
+    ${filtros}
+    ${track}
+  </section>`;
+}
+// Panel con el contenido completo (hoja inferior en celular, panel lateral en web)
+function tipPanel(u){
+  const tp = S.tipPanel && TIPS.find(t => t.id === S.tipPanel); if(!tp) return "";
+  return `<div class="tp-panelbg" data-act="tipClose"></div>
+  <div class="tp-panel tp-card" id="tp-panel" role="dialog" aria-modal="true" aria-labelledby="tp-ptitle" tabindex="-1">
+    <div class="gd-grab"></div>
+    <div class="tp-ptop"><span class="tp-cat">${star5(NV_COL[0], "nv-star")}${esc(tipCatName(tp.cat))}</span>
+      <div>${tipFavBtn(tp, u)}<button class="tp-x" data-act="tipClose" aria-label="Cerrar">${TIP_ICO.x}</button></div></div>
+    <h3 id="tp-ptitle">${esc(tp.t)}</h3>
+    <div class="tp-dato"><b>${esc(tp.dato)}</b><span>${esc(tp.datoTx)}</span></div>
+    ${tipCuerpo(tp)}
+    <button class="btn tp-pclose" data-act="tipClose">Cerrar</button>
+  </div>`;
+}
+// Tras cada render: posición del carrusel, flechas, bloqueo de scroll y foco
+function tipArrows(){
+  const tr = document.getElementById("tp-track"), car = document.getElementById("tp-car"); if(!tr || !car) return;
+  const max = tr.scrollWidth - tr.clientWidth;
+  car.classList.toggle("fits", max <= 4);
+  const [pv, nx] = car.querySelectorAll(".tp-arr"); if(!pv || !nx) return;
+  const a = document.activeElement;
+  pv.disabled = tr.scrollLeft <= 4; nx.disabled = tr.scrollLeft >= max - 4;
+  if(a === pv && pv.disabled) nx.focus(); else if(a === nx && nx.disabled) pv.focus();
+}
+function tipStep(dir, edge){
+  const tr = document.getElementById("tp-track"); const sl = tr && tr.querySelector(".tp-slide"); if(!sl) return;
+  const step = sl.offsetWidth + (parseFloat(getComputedStyle(tr).columnGap) || 0);
+  const left = edge ? (dir < 0 ? 0 : tr.scrollWidth) : (Math.round(tr.scrollLeft / step) + dir) * step;
+  tr.scrollTo({left, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+}
+function tipAfter(){
+  const panel = document.getElementById("tp-panel"), tr = document.getElementById("tp-track");
+  document.documentElement.classList.toggle("tp-lock", !!panel);
+  if(tr){
+    tr.style.scrollBehavior = "auto"; tr.scrollLeft = S.tipX || 0; tr.style.scrollBehavior = "";
+    tr.addEventListener("scroll", () => { S.tipX = tr.scrollLeft; tipArrows(); }, {passive: true});
+    tipArrows();
+  }
+  const sel = S.tipFocus; S.tipFocus = null;
+  const el = (sel && document.querySelector(sel)) || (sel && (panel || tr || document.querySelector('.tp-f[aria-pressed="true"]'))) || null;
+  if(el) el.focus({preventScroll: true});
+  else if(panel && !panel.contains(document.activeElement)) panel.focus({preventScroll: true});
+}
+window.addEventListener("resize", () => tipArrows());
+document.addEventListener("keydown", e => {
+  const panel = document.getElementById("tp-panel");
+  if(panel){
+    if(e.key === "Escape"){ e.preventDefault(); ACT.tipClose(); return; }
+    if(e.key === "Tab"){
+      const f = [...panel.querySelectorAll("button, summary, a[href]")].filter(x => !x.disabled);
+      if(!f.length) return; const first = f[0], last = f[f.length - 1], a = document.activeElement;
+      if(e.shiftKey && (a === first || a === panel || !panel.contains(a))){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && (a === last || !panel.contains(a))){ e.preventDefault(); first.focus(); }
+    }
+    return;
+  }
+  if(e.target && e.target.id === "tp-track"){
+    const m = {ArrowRight: [1], ArrowLeft: [-1], Home: [-1, 1], End: [1, 1]}[e.key];
+    if(m){ e.preventDefault(); tipStep(m[0], m[1]); }
+  }
+});
 function vInicio(u){
   const cat = S.tipCat || "todos"; const favs = tipFavs(u); const hoy = tipDelDia();
   const lista = cat === "todos" ? TIPS : cat === "guardados" ? TIPS.filter(t => favs.includes(t.id)) : TIPS.filter(t => t.cat === cat);
-  const vacio = cat === "guardados" ? "Aún no guardas tips. Toca la estrella de una tarjeta para tenerla a mano aquí." : "No hay tips en esta categoría.";
   return `<h2 class="nv-hola">${star5(NV_COL[0])}Hola, ${esc(nvNombre(u) || "")}</h2>
   <div class="card tp-go"><div><b>${esc(gx("¿Listo/a para entrenar?", u))}</b><span class="small muted">Tu sesión de hoy te espera en Entrenar.</span></div>
     <button class="btn tp-cta" data-act="tab" data-v="entrenar">Ir a entrenar</button></div>
-  ${tipCard(hoy, u, true)}
-  <div class="sechead">Tips de salud</div>
-  <div class="tp-filtros">${TIP_CATS.map(([k, l]) => `<button class="tp-f" data-act="tipCat" data-v="${k}" aria-pressed="${k === cat}">${l}${k === "guardados" && favs.length ? ` · ${favs.length}` : ""}</button>`).join("")}</div>
-  ${lista.length ? `<div class="grid2 tp-grid">${lista.map(t => tipCard(t, u)).join("")}</div>` : `<div class="empty">${vacio}</div>`}
-  <p class="small muted tp-aviso">Estos tips son información general basada en estudios. No reemplazan a tu médico ni a tu nutricionista: si tienes una condición de salud, consúltalos antes de cambiar tu alimentación, tu suplementación o tu actividad.</p>`;
+  ${tipCard(hoy, u)}
+  ${tipCarousel(lista, u, cat, favs)}
+  <p class="small muted tp-aviso">Estos tips son información general basada en estudios. No reemplazan a tu médico ni a tu nutricionista: si tienes una condición de salud, consúltalos antes de cambiar tu alimentación, tu suplementación o tu actividad.</p>
+  ${tipPanel(u)}`;
 }
 
 /* ---------- Render ---------- */
@@ -975,6 +1101,7 @@ function render(){
   try{ const vu = viewUid(); document.documentElement.style.setProperty("--acc", vu && S.alumnos[vu] && !(S.isOwner && S.role === "coach") ? acentoDe(vu) : "#A3E850"); }catch(e){}
   $("#app").innerHTML = header() + `<main class="main">${body()}</main>` + timerHtml() + saveBar();
   window.scrollTo(0, y);
+  try{ tipAfter(); }catch(e){}
 }
 
 function header(){
@@ -2229,9 +2356,12 @@ const ACT = {
   copyTxt: d => { try{ navigator.clipboard.writeText(d.t).then(() => toast("Copiado."), () => toast("No se pudo copiar.", true)); }catch(e){ toast("No se pudo copiar.", true); } },
   calM: d => { S.calOff += +d.v; render(); },
   tab: d => { S.tab = d.v; S.confirmDel = null; render(); },
-  tipCat: d => { S.tipCat = d.v; S.tipOpen = null; render(); },
-  tipOpen: d => { S.tipOpen = S.tipOpen === d.id ? null : d.id; render(); },
-  tipFav: d => { const u = viewUid(); const f = tipFavs(u); const i = f.indexOf(d.id); if(i >= 0) f.splice(i, 1); else f.push(d.id); lsSet("dll_tipfav_" + u, JSON.stringify(f)); toast(i >= 0 ? "Quitado de tus guardados." : "Guardado. Lo encuentras en «Guardados»."); render(); },
+  tipCat: d => { S.tipCat = d.v; S.tipPanel = null; S.tipX = 0; S.tipFocus = `.tp-f[data-v="${d.v}"]`; render(); },
+  tipOpen: d => { S.tipPanel = d.id; S.tipFocus = "#tp-panel .tp-x"; render(); },
+  tipClose: () => { const id = S.tipPanel; if(!id) return; S.tipPanel = null; S.tipFocus = `.tp-leer[data-id="${id}"]`; render(); },
+  tipStep: d => tipStep(+d.dir),
+  tipFav: (d, el) => { const u = viewUid();
+    S.tipFocus = el?.closest("#tp-panel") ? "#tp-panel .tp-fav" : el?.closest(".tp-hoy") ? ".tp-hoy .tp-fav" : `.tp-track .tp-fav[data-id="${d.id}"]`; const f = tipFavs(u); const i = f.indexOf(d.id); if(i >= 0) f.splice(i, 1); else f.push(d.id); lsSet("dll_tipfav_" + u, JSON.stringify(f)); toast(i >= 0 ? "Quitado de tus guardados." : "Guardado. Lo encuentras en «Guardados»."); render(); },
   goto: d => { S.cur = d.id; S.tab = d.tab; render(); },
   verAlumno: d => { S.cur = d.id; S.role = "alumno"; S.tab = "inicio"; S.av = null; render(); },
   volverCoach: () => { S.role = "coach"; S.tab = "equipo"; render(); },
