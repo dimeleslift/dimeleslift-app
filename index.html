@@ -637,6 +637,7 @@ html.tp-lock{overflow:hidden}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="shim.js?v=2"></script>
+<script src="historias.js"></script>
 <script>
 "use strict";
 /* ---------- Constantes ---------- */
@@ -2896,7 +2897,7 @@ function resumenHtml(u, dk, enSesion){
     ${R.mejor ? `<div class="gd-hi"><span class="small muted">Mejor serie</span><b>${esc(ejName(R.mejor.ej))}: ${fmtKg(R.mejor.p)} kg × ${R.mejor.r}</b></div>` : ""}
     ${R.mejora ? `<div class="gd-hi"><span class="small muted">vs la vez anterior</span><b style="color:var(--acc)">+${fmtKg(R.mejora.d)} kg en ${esc(ejName(R.mejora.ej))}</b></div>` : ""}
     ${R.record ? `<div class="gd-hi rec"><span>★ NUEVO RÉCORD</span><b>${esc(ejName(R.record.ej))}: ${fmtKg(R.record.p)} kg × ${R.record.r}</b></div>` : ""}
-    ${R.series ? `<button class="gd-cta" data-act="gdShare" data-k="${esc(dk)}">Compartir en mi historia</button>` : ""}
+    ${R.series ? `<button class="gd-cta" data-act="gdShare" data-k="${esc(dk)}">Crear mi historia</button>` : ""}
     ${enSesion ? `<button class="btn ghost pill" data-act="gdCerrar">Listo</button>` : ""}
   </div>`;
 }
@@ -2972,10 +2973,9 @@ async function storyBlob(u, dk){
   x.fillText(h1, W - M - x.measureText(h1).width, yb + 18); x.fillText(h2, W - M - x.measureText(h2).width, yb + 56);
   return await new Promise(res => cv.toBlob(res, "image/png"));
 }
-async function compartirHistoria(dk){
-  const u = viewUid(); toast("Preparando tu imagen…");
+async function compartirHistoria(blob){
   try{
-    const blob = await storyBlob(u, dk); if(!blob) throw new Error("png");
+    if(!blob) throw new Error("png");
     const file = new File([blob], `dimeleslift-${TODAY}.png`, {type:"image/png"});
     if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], title:"Mi sesión · Dimeleslift"}); return; }catch(e){ if(e?.name === "AbortError") return; } }
     const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
@@ -3053,7 +3053,7 @@ Object.assign(ACT, {
   gdCerrar: async () => { const u = viewUid(); S.gd = null; lsSet("dll_gd_"+u, null);
     if(u === PRUEBA_ID){ if(await pruebaRepetir(true)) toast("Sesión de prueba terminada: quedó lista para empezar de nuevo."); return; }
     render(); window.scrollTo(0,0); },
-  gdShare: d => { compartirHistoria(d.k); }
+  gdShare: d => abrirEditorHistoria(d.k)
 });
 document.addEventListener("input", e => { const d = e.target.dataset; if(d.gd && S.gd?.cur){ S.gd.cur[d.gd] = String(e.target.value).replace(",", "."); gdSave(); } });
 setInterval(() => {
@@ -3345,7 +3345,7 @@ function resumenHtmlNv(u, dk, enSesion){
     ${R.det.length ? `<div class="nv-det">${R.det.map(setsTabla).join("")}</div>
       <div class="gd-total">Volumen total: <b>${R.ton.toLocaleString("es-CL")} kg</b> <span class="small muted">(suma de carga × repeticiones de cada serie)</span></div>` : `<div class="empty">No hay series registradas en este día.</div>`}
     ${msgHtml(msg)}
-    ${R.series ? `<button class="gd-cta" data-act="gdShare" data-k="${esc(dk)}">Compartir en mi historia</button>` : ""}
+    ${R.series ? `<button class="gd-cta" data-act="gdShare" data-k="${esc(dk)}">Crear mi historia</button>` : ""}
     ${enSesion ? `<button class="btn ghost pill" data-act="gdCerrar">Listo</button>` : ""}
     ${enSesion ? CONCEPTO : ""}
   </div>`;
