@@ -32,20 +32,20 @@
 
   /* ---------------- Login ---------------- */
   const css = `
-  #dll-login{position:fixed;inset:0;z-index:9999;background:#0B0B0B;color:#F4F1EC;display:flex;align-items:center;justify-content:center;padding:20px;font-family:"Nunito Sans",system-ui,sans-serif}
-  #dll-login .box{width:100%;max-width:380px;background:#1b1a1e;border:1px solid #37343d;border-radius:18px;padding:28px}
-  #dll-login .logo{font-size:30px;line-height:1;margin-bottom:6px}
-  #dll-login .logo b{color:#D94AA8;font-weight:900}
+  #dll-login{position:fixed;inset:0;z-index:9999;background:#000000;color:#F4F1EC;display:flex;align-items:center;justify-content:center;padding:20px;font-family:"League Spartan",system-ui,sans-serif}
+  #dll-login .box{width:100%;max-width:380px;background:#141414;border:1px solid #2A2A2A;border-radius:20px;padding:28px}
+  #dll-login .logo{font-family:"Nunito Sans",system-ui,sans-serif;font-weight:400;letter-spacing:-.01em;font-size:30px;line-height:1;margin-bottom:6px}
+  #dll-login .logo b{color:#DA45A4;font-weight:800;letter-spacing:-.02em}
   #dll-login h1{font-family:"League Spartan","Arial Black",sans-serif;font-size:20px;margin:16px 0 6px}
-  #dll-login p{color:#a7a1ad;font-size:14px;margin:0 0 14px}
-  #dll-login label{display:block;font-size:13px;color:#a7a1ad;margin:0 0 4px}
-  #dll-login input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid #37343d;background:#25232a;color:#F4F1EC;font-size:16px;margin-bottom:10px}
-  #dll-login button{width:100%;padding:12px;border:0;border-radius:999px;background:#B02E82;color:#fff;font-weight:800;font-size:15px;cursor:pointer}
+  #dll-login p{color:#B8B3AB;font-size:14px;margin:0 0 14px}
+  #dll-login label{display:block;font-size:13px;color:#B8B3AB;margin:0 0 4px}
+  #dll-login input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid #3A3A3A;background:#000000;color:#F4F1EC;font-size:16px;margin-bottom:10px}
+  #dll-login button{width:100%;padding:12px;border:0;border-radius:999px;background:#A3E850;color:#000;font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:15px;cursor:pointer}
   #dll-login button[disabled]{opacity:.6}
-  #dll-login .link{background:none;color:#a7a1ad;font-weight:600;margin-top:8px;text-decoration:underline}
+  #dll-login .link{background:none;color:#B8B3AB;font-weight:600;margin-top:8px;text-decoration:underline}
   #dll-login .err{color:#ff6b6b;font-size:13px;min-height:18px}
-  #dll-login .ok{color:#b5e853;font-size:13px;min-height:18px}
-  #dll-out{position:fixed;left:12px;bottom:12px;z-index:50;background:#25232a;color:#a7a1ad;border:1px solid #37343d;border-radius:999px;padding:6px 12px;font:600 12px "Nunito Sans",sans-serif;cursor:pointer}`;
+  #dll-login .ok{color:#A3E850;font-size:13px;min-height:18px}
+  #dll-out{position:fixed;left:12px;bottom:12px;z-index:50;background:#000000;color:#B8B3AB;border:1px solid #3A3A3A;border-radius:999px;padding:6px 12px;font:600 12px "League Spartan",sans-serif;cursor:pointer}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
   const $ = id => document.getElementById(id);
