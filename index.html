@@ -2752,6 +2752,7 @@ function vGuiado(){
     </div>`;
   }
   if(g.fase === "resumen") return resumenHtml(u, dk, true);
+  if(g.fase === "introCheckin") return `<div class="gd card"><h2 class="gd-title">Antes de comenzar</h2><p>Responde estas preguntas para contarme cómo llegas hoy a entrenar.</p><button class="gd-cta" data-act="gdResponder">Responder preguntas</button></div>`;
   if(g.fase === "checkin") return `<div class="gd card">${ckHtml(g.ck ||= {i:0, zonas:{}}, "gd", u, dk)}</div>`;
   if(g.fase === "rpeg") return `<div class="gd card">${rpegHtml(g.rpeG, u, dk, "gd")}<button class="gd-cta" data-act="rpegOk" ${g.rpeG == null ? "disabled" : ""}>Ver mi resumen</button></div>`;
   if(g.fase === "act"){
@@ -3026,9 +3027,10 @@ async function gdGuardarSerie(x, rpe){ const {c, g, r, key} = x;
     gdSave(); render(); await saveEntry(key, r.ej, true); }
 Object.assign(ACT, {
   modo: d => { S.modo = d.v; S.modoElegido = true; lsSet("dll_modo", d.v); render(); window.scrollTo(0,0); },
+  gdResponder: () => { if(S.gd?.fase !== "introCheckin") return; S.gd.fase = "checkin"; gdSave(); render(); },
   gdStart: () => { const c = gdCtx(); if(!c) return;
     S.gd = {dk:c.dk, dia:TODAY, ini:Date.now(), idx:0, fase: c.act.length ? "act" : (c.main.length ? "serie" : "cierre"), checks:{}, dolor:null, rpe:null, cur:null};
-    if(nv(c.u) && !ckHoy(c.u, c.dk)){ S.gd.fase = "checkin"; S.gd.ck = {i:0, zonas:{}}; }
+    if(nv(c.u) && !ckHoy(c.u, c.dk)){ S.gd.fase = "introCheckin"; S.gd.ck = {i:0, zonas:{}}; }
     gdSave(); try{ audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){} render(); window.scrollTo(0,0); },
   gdActOk: () => { const c = gdCtx(); S.gd.fase = c?.main.length ? "serie" : "cierre"; gdSave(); render(); },
   gdStep: d => { const g = S.gd; if(!g?.cur) return; const v = +d.v; const cur = numOrNull(g.cur[d.f]) || 0;
