@@ -347,6 +347,38 @@ details.hist .gd{border:0;padding:12px 0 0;background:none}
 .ck-tipo[aria-pressed="true"]{border-color:var(--acc)}
 .ck-rpeg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 .ck-rpeg .pillbtn{padding:12px 0;font-size:1.1rem}
+/* Inicio del alumno + Tips de salud (27 nov 2026) */
+.tp-go{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;border-color:var(--acc)}
+.tp-go>div{display:flex;flex-direction:column;gap:2px}
+.tp-go b{font-family:var(--display);font-size:1.1rem}
+.tp-cta{background:var(--acc);border-color:var(--acc);color:#000000}
+.tp-card{gap:10px}
+.tp-head{display:flex;gap:8px;align-items:flex-start}
+.tp-hb{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer}
+div.tp-hb{cursor:default}
+.tp-mas{font-size:.82rem;font-weight:800;color:var(--acc)}
+.tp-grid{align-items:start}
+.tp-card h3{text-transform:none;font-size:1.15rem;line-height:1.2}
+.tp-card p{margin:0;line-height:1.45;color:var(--soft);font-size:.95rem}
+.tp-hoy{border:2px dashed var(--pink)}
+.tp-cat{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--pink)}
+.tp-cat .nv-star{margin:0}
+.tp-fav{background:none;border:0;padding:4px;cursor:pointer;line-height:0}
+.tp-favs{width:24px;height:24px}
+.tp-favs path{stroke:var(--acc);stroke-width:1.5}
+.tp-dato{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;background:var(--panel2);border-radius:14px;padding:10px 12px}
+.tp-dato b{font-family:var(--display);font-weight:800;font-size:1.7rem;color:var(--acc);white-space:nowrap}
+.tp-dato span{font-size:.88rem;color:var(--muted);flex:1;min-width:140px}
+.tp-lbl{display:block;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px}
+.tp-prac{border-left:3px solid var(--acc);padding-left:10px}
+.tp-src summary{cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)}
+.tp-src p{font-size:.8rem;margin-top:6px;word-break:break-word}
+.tp-filtros{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.tp-filtros::-webkit-scrollbar{display:none}
+.tp-f{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit}
+.tp-f[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#000000}
+.tp-aviso{text-align:center;margin:8px 4px 0}
+@media (max-width:480px){.tp-go{flex-direction:column;align-items:stretch}.tp-cta{width:100%}}
 </style>
 <script>
 /* Dimeleslift · Crear / recuperar contraseña con código (arreglo del loop) */
@@ -832,6 +864,100 @@ function strengthMap(uid){
   return {res, n:Object.keys(perEj).length};
 }
 
+/* ==========================================================================
+   Inicio del alumno + Tips de salud (27 nov 2026) · solo perfiles con
+   novedades (nv). Tarjetas fijas escritas a partir de estudios: «Lo que dice
+   la evidencia» = dato de la fuente; «En la práctica» = aplicación de Les.
+   ========================================================================== */
+const TIP_CATS = [["todos","Todos"],["sueno","Sueño"],["nutricion","Nutrición"],["hidratacion","Hidratación"],["movimiento","Movimiento"],["recuperacion","Recuperación"],["guardados","Guardados"]];
+const TIPS = [
+  {id:"sueno7", cat:"sueno", t:"Duerme 7 horas o más", dato:"7 h", datoTx:"o más por noche, de forma regular",
+   ev:"La Academia Estadounidense de Medicina del Sueño y la Sleep Research Society recomiendan que los adultos duerman 7 horas o más por noche. Dormir menos de forma habitual se asocia a peor salud.",
+   pr:"Mientras duermes tu cuerpo se recupera del entrenamiento. Si una semana duermes poco, cuéntamelo en el check-in.",
+   src:"Watson et al. (2015)", ref:"Watson, N. F., et al. (2015). Recommended amount of sleep for a healthy adult: A joint consensus statement of the AASM and SRS. Sleep, 38(6), 843–844. https://doi.org/10.5665/sleep.4716"},
+  {id:"suenoreg", cat:"sueno", t:"Acuéstate y levántate a la misma hora", dato:"20–48 %", datoTx:"menos riesgo de muerte por cualquier causa",
+   ev:"En 60.977 adultos del UK Biobank, medidos con acelerómetro, quienes tenían horarios de sueño más regulares tuvieron entre 20 % y 48 % menos riesgo de muerte por cualquier causa. La regularidad predijo el riesgo mejor que las horas de sueño. Es un estudio observacional: muestra asociación, no causa.",
+   pr:"Intenta que tu hora de despertar no cambie más de una hora entre la semana y el fin de semana.",
+   src:"Windred et al. (2024)", ref:"Windred, D. P., et al. (2024). Sleep regularity is a stronger predictor of mortality risk than sleep duration: A prospective cohort study. Sleep, 47(1), zsad253. https://doi.org/10.1093/sleep/zsad253"},
+  {id:"cafe", cat:"sueno", t:"Ojo con el café de la tarde", dato:"−1 h", datoTx:"de sueño con 400 mg de cafeína 6 h antes de dormir",
+   ev:"400 mg de cafeína tomados 6 horas antes de acostarse redujeron el sueño total en más de 1 hora, medido con monitor de sueño, aunque las personas no lo percibieron.",
+   pr:"Si entrenas de tarde y usas preentreno o café, revisa cuánta cafeína trae y a qué hora te vas a acostar.",
+   src:"Drake et al. (2013)", ref:"Drake, C., et al. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200. https://doi.org/10.5664/jcsm.3170"},
+  {id:"proteina", cat:"nutricion", t:"¿Cuánta proteína al día?", dato:"1,4–2,0 g", datoTx:"por kilo de peso al día si entrenas",
+   ev:"La Sociedad Internacional de Nutrición Deportiva (ISSN) recomienda entre 1,4 y 2,0 g de proteína por kilo de peso corporal al día para personas que hacen ejercicio.",
+   pr:"Ejemplo: si pesas 60 kg, son entre 84 y 120 g de proteína al día. Si tienes una condición de salud, revisa tu caso con tu nutricionista.",
+   src:"Jäger et al. (2017)", ref:"Jäger, R., et al. (2017). International Society of Sports Nutrition Position Stand: protein and exercise. Journal of the International Society of Sports Nutrition, 14, 20. https://doi.org/10.1186/s12970-017-0177-8"},
+  {id:"protreparto", cat:"nutricion", t:"Reparte la proteína en el día", dato:"4", datoTx:"comidas con unos 0,4 g/kg cada una",
+   ev:"Para aprovechar la proteína en la construcción de músculo, los autores proponen unos 0,4 g por kilo en cada comida, en al menos 4 comidas, para llegar a 1,6 g/kg al día.",
+   pr:"Con 60 kg: unos 24 g por comida (por ejemplo, 3 huevos más un yogur proteico, o una presa de pollo).",
+   src:"Schoenfeld y Aragon (2018)", ref:"Schoenfeld, B. J., & Aragon, A. A. (2018). How much protein can the body use in a single meal for muscle-building? Journal of the International Society of Sports Nutrition, 15, 10. https://doi.org/10.1186/s12970-018-0215-1"},
+  {id:"frutas", cat:"nutricion", t:"Frutas y verduras todos los días", dato:"400 g", datoTx:"al día como mínimo (5 porciones)",
+   ev:"La Organización Mundial de la Salud recomienda comer al menos 400 g de frutas y verduras al día, sin contar papas ni otros tubérculos feculentos.",
+   pr:"Una forma simple: media plato de verduras en almuerzo y cena, y una fruta en la colación.",
+   src:"OMS (2020)", ref:"Organización Mundial de la Salud (2020). Alimentación sana. Nota descriptiva. https://www.who.int/es/news-room/fact-sheets/detail/healthy-diet"},
+  {id:"creatina", cat:"nutricion", t:"Creatina: el suplemento con más evidencia", dato:"3–5 g", datoTx:"al día de creatina monohidrato",
+   ev:"La ISSN concluye que la creatina monohidrato es el suplemento más eficaz para aumentar la capacidad de entrenamiento de alta intensidad y la masa magra, y que su uso a corto y largo plazo es seguro en personas sanas. La dosis de mantención es de 3 a 5 g al día.",
+   pr:"No es obligatoria para progresar. Si tienes una enfermedad renal o tomas medicamentos, consulta antes con tu médico.",
+   src:"Kreider et al. (2017)", ref:"Kreider, R. B., et al. (2017). International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine. Journal of the International Society of Sports Nutrition, 14, 18. https://doi.org/10.1186/s12970-017-0173-z"},
+  {id:"deshidrata", cat:"hidratacion", t:"Pésate antes y después de entrenar", dato:"2 %", datoTx:"del peso perdido en sudor ya puede bajar tu rendimiento",
+   ev:"El Colegio Estadounidense de Medicina del Deporte (ACSM) indica que perder más del 2 % del peso corporal por sudor puede empeorar el rendimiento aeróbico y la función mental, sobre todo con calor.",
+   pr:"Si pesas 60 kg, el 2 % son 1,2 kg. Pesarte antes y después de una sesión larga te dice cuánto líquido perdiste.",
+   src:"Sawka et al. (2007)", ref:"Sawka, M. N., et al. (2007). American College of Sports Medicine position stand: Exercise and fluid replacement. Medicine & Science in Sports & Exercise, 39(2), 377–390. https://doi.org/10.1249/mss.0b013e31802ca597"},
+  {id:"repone", cat:"hidratacion", t:"Repón lo que perdiste", dato:"1,25–1,5 L", datoTx:"de líquido por cada kilo perdido",
+   ev:"Para recuperarse después del ejercicio, la postura conjunta del ACSM y la Academia de Nutrición y Dietética recomienda tomar entre 1,25 y 1,5 L de líquido por cada kilo de peso perdido.",
+   pr:"Si bajaste 1 kg entre el inicio y el final de la sesión, toma de a poco entre 1,25 y 1,5 L en las horas siguientes.",
+   src:"Thomas et al. (2016)", ref:"Thomas, D. T., Erdman, K. A., & Burke, L. M. (2016). American College of Sports Medicine joint position statement: Nutrition and athletic performance. Medicine & Science in Sports & Exercise, 48(3), 543–568. https://doi.org/10.1249/MSS.0000000000000852"},
+  {id:"pasos", cat:"movimiento", t:"Pasos: no hace falta llegar a 10.000", dato:"6.000–8.000", datoTx:"pasos al día si tienes 60 o más; 8.000–10.000 si tienes menos de 60",
+   ev:"En un metaanálisis de 15 cohortes con 47.471 adultos, el riesgo de muerte bajó a medida que subían los pasos diarios y dejó de bajar alrededor de 6.000–8.000 pasos en mayores de 60 años y de 8.000–10.000 en menores de 60.",
+   pr:"Los días que no entrenas, una caminata cuenta. Sumar de a poco también sirve.",
+   src:"Paluch et al. (2022)", ref:"Paluch, A. E., et al. (2022). Daily steps and all-cause mortality: a meta-analysis of 15 international cohorts. The Lancet Public Health, 7(3), e219–e228. https://doi.org/10.1016/S2468-2667(21)00302-9"},
+  {id:"oms", cat:"movimiento", t:"Lo mínimo que recomienda la OMS", dato:"150–300 min", datoTx:"de actividad moderada a la semana + fuerza 2 días",
+   ev:"La OMS recomienda a los adultos 150 a 300 minutos semanales de actividad aeróbica moderada (o 75 a 150 de vigorosa), ejercicios de fuerza al menos 2 días por semana y reducir el tiempo sentado.",
+   pr:"Tu entrenamiento de fuerza ya cubre una parte. Lo aeróbico puede ser caminar rápido, bici o cardio al final de la sesión.",
+   src:"Bull et al. (2020)", ref:"Bull, F. C., et al. (2020). World Health Organization 2020 guidelines on physical activity and sedentary behaviour. British Journal of Sports Medicine, 54(24), 1451–1462. https://doi.org/10.1136/bjsports-2020-102955"},
+  {id:"huesos", cat:"movimiento", t:"La fuerza también cuida tus huesos", dato:"+2,9 %", datoTx:"de densidad ósea en la columna lumbar en 8 meses",
+   ev:"En 101 mujeres posmenopáusicas con masa ósea baja, 8 meses de entrenamiento de fuerza de alta intensidad supervisado (2 veces por semana, 30 minutos, 5 series de 5 repeticiones sobre el 85 % del 1RM) aumentaron la densidad ósea lumbar un 2,9 %, mientras el grupo control bajó un 1,2 %.",
+   pr:"Levantar pesado, con buena técnica y supervisión, es una de las mejores inversiones para envejecer bien.",
+   src:"Watson et al. (2018)", ref:"Watson, S. L., et al. (2018). High-intensity resistance and impact training improves bone mineral density and physical function in postmenopausal women with osteopenia and osteoporosis: The LIFTMOR randomized controlled trial. Journal of Bone and Mineral Research, 33(2), 211–220. https://doi.org/10.1002/jbmr.3284"},
+  {id:"doms", cat:"recuperacion", t:"Dolor muscular normal o dolor que avisa", dato:"24–72 h", datoTx:"es cuando suele aparecer el dolor muscular tardío",
+   ev:"El dolor muscular de aparición tardía suele empezar entre 12 y 24 horas después del ejercicio, alcanza su máximo entre las 24 y 72 horas y desaparece en 5 a 7 días.",
+   pr:"Un dolor punzante, en una articulación, que te hace cambiar cómo te mueves o que no cede, no es ese dolor: márcalo en el check-in para que lo revisemos.",
+   src:"Cheung et al. (2003)", ref:"Cheung, K., Hume, P., & Maxwell, L. (2003). Delayed onset muscle soreness: treatment strategies and performance factors. Sports Medicine, 33(2), 145–164. https://doi.org/10.2165/00007256-200333020-00005"},
+  {id:"estres", cat:"recuperacion", t:"El estrés también cuenta en tu recuperación", dato:"96 h", datoTx:"de seguimiento: más estrés, recuperación más lenta",
+   ev:"En 31 estudiantes que entrenaban fuerza, quienes reportaban más estrés recuperaron su fuerza máxima, su energía y su dolor muscular más lento durante las 96 horas posteriores a una sesión intensa.",
+   pr:"Por eso el check-in te pregunta cómo estás antes de entrenar: una semana pesada en la pega o en la casa también se nota en la barra.",
+   src:"Stults-Kolehmainen et al. (2014)", ref:"Stults-Kolehmainen, M. A., Bartholomew, J. B., & Sinha, R. (2014). Chronic psychological stress impairs recovery of muscular function and somatic sensations over a 96-hour period. Journal of Strength and Conditioning Research, 28(7), 2007–2017. https://doi.org/10.1519/JSC.0000000000000335"}
+];
+function tipFavs(u){ try{ const v = JSON.parse(lsGet("dll_tipfav_" + u) || "[]"); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
+function tipDelDia(){ let h = 0; for(const ch of TODAY) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return TIPS[h % TIPS.length]; }
+const tipCatName = c => (TIP_CATS.find(x => x[0] === c) || ["", ""])[1];
+function tipCard(tp, u, destacado){
+  const fav = tipFavs(u).includes(tp.id); const open = destacado || S.tipOpen === tp.id;
+  const favBtn = `<button class="tp-fav" data-act="tipFav" data-id="${tp.id}" aria-pressed="${fav}" aria-label="${fav ? "Quitar de guardados" : "Guardar tip"}">${star5(fav ? NV_COL[1] : "none", "tp-favs")}</button>`;
+  const cab = `<span class="tp-cat">${star5(NV_COL[0], "nv-star")}${destacado ? "Tip del día · " : ""}${esc(tipCatName(tp.cat))}</span>
+    <h3>${esc(tp.t)}</h3>
+    <div class="tp-dato"><b>${esc(tp.dato)}</b><span>${esc(tp.datoTx)}</span></div>`;
+  return `<article class="card tp-card${destacado ? " tp-hoy" : ""}${open ? " open" : ""}">
+    <div class="tp-head">${destacado ? `<div class="tp-hb">${cab}</div>` : `<button class="tp-hb" data-act="tipOpen" data-id="${tp.id}" aria-expanded="${open}">${cab}<span class="tp-mas">${open ? "Cerrar" : "Leer más"}</span></button>`}${favBtn}</div>
+    ${open ? `<p><span class="tp-lbl">Lo que dice la evidencia</span>${esc(tp.ev)}</p>
+    <p class="tp-prac"><span class="tp-lbl">En la práctica</span>${esc(tp.pr)}</p>
+    <details class="tp-src"><summary>Fuente: ${esc(tp.src)}</summary><p>${esc(tp.ref)}</p></details>` : ""}
+  </article>`;
+}
+function vInicio(u){
+  const cat = S.tipCat || "todos"; const favs = tipFavs(u); const hoy = tipDelDia();
+  const lista = cat === "todos" ? TIPS : cat === "guardados" ? TIPS.filter(t => favs.includes(t.id)) : TIPS.filter(t => t.cat === cat);
+  const vacio = cat === "guardados" ? "Aún no guardas tips. Toca la estrella de una tarjeta para tenerla a mano aquí." : "No hay tips en esta categoría.";
+  return `<h2 class="nv-hola">${star5(NV_COL[0])}Hola, ${esc(nvNombre(u) || "")}</h2>
+  <div class="card tp-go"><div><b>${esc(gx("¿Listo/a para entrenar?", u))}</b><span class="small muted">Tu sesión de hoy te espera en Entrenar.</span></div>
+    <button class="btn tp-cta" data-act="tab" data-v="entrenar">Ir a entrenar</button></div>
+  ${tipCard(hoy, u, true)}
+  <div class="sechead">Tips de salud</div>
+  <div class="tp-filtros">${TIP_CATS.map(([k, l]) => `<button class="tp-f" data-act="tipCat" data-v="${k}" aria-pressed="${k === cat}">${l}${k === "guardados" && favs.length ? ` · ${favs.length}` : ""}</button>`).join("")}</div>
+  ${lista.length ? `<div class="grid2 tp-grid">${lista.map(t => tipCard(t, u)).join("")}</div>` : `<div class="empty">${vacio}</div>`}
+  <p class="small muted tp-aviso">Estos tips son información general basada en estudios. No reemplazan a tu médico ni a tu nutricionista: si tienes una condición de salud, consúltalos antes de cambiar tu alimentación, tu suplementación o tu actividad.</p>`;
+}
+
 /* ---------- Render ---------- */
 function scheduleRender(){
   const a = document.activeElement;
@@ -845,6 +971,7 @@ document.addEventListener("focusout", () => setTimeout(() => {
 
 function render(){
   const y = window.scrollY;
+  try{ if(S.tab === "inicio" && !(S.isOwner && S.role === "coach") && viewUid() && S.alumnos[viewUid()] && !nv()) S.tab = "entrenar"; }catch(e){}
   try{ const vu = viewUid(); document.documentElement.style.setProperty("--acc", vu && S.alumnos[vu] && !(S.isOwner && S.role === "coach") ? acentoDe(vu) : "#A3E850"); }catch(e){}
   $("#app").innerHTML = header() + `<main class="main">${body()}</main>` + timerHtml() + saveBar();
   window.scrollTo(0, y);
@@ -854,7 +981,7 @@ function header(){
   let tabs = [];
   if(S.state === "ok"){
     if(S.isOwner && S.role === "coach") tabs = [["equipo","Equipo"],["programar","Programar"],["registros","Registros"],["progreso","Progreso"],["ejercicios","Ejercicios"]];
-    else if(viewUid() && S.alumnos[viewUid()]) tabs = [["entrenar","Entrenar"],["miprogreso","Mi progreso"],["historial","Historial"]];
+    else if(viewUid() && S.alumnos[viewUid()]) tabs = (nv() ? [["inicio","Inicio"]] : []).concat([["entrenar","Entrenar"],["miprogreso","Mi progreso"],["historial","Historial"]]);
   }
   return `<header class="top"><div class="topin">
     <div class="brand"><span class="logo" aria-label="dimeLESlift">dime<b>LES</b>lift</span><small>${S.isOwner && S.role==="coach" ? "Coach" : "Alumno"}</small></div>
@@ -872,6 +999,7 @@ function body(){
   }
   const u = viewUid();
   if(!S.isOwner && !S.alumnos[u]) return h + vOnboarding();
+  if(S.tab === "inicio"){ if(nv(u)) return h + vInicio(u); S.tab = "entrenar"; }
   if(S.tab === "miprogreso") return h + vProgreso(u);
   if(S.tab === "historial") return h + vHistorial(u);
   return h + vEntrenar();
@@ -2041,8 +2169,11 @@ const ACT = {
   copyTxt: d => { try{ navigator.clipboard.writeText(d.t).then(() => toast("Copiado."), () => toast("No se pudo copiar.", true)); }catch(e){ toast("No se pudo copiar.", true); } },
   calM: d => { S.calOff += +d.v; render(); },
   tab: d => { S.tab = d.v; S.confirmDel = null; render(); },
+  tipCat: d => { S.tipCat = d.v; S.tipOpen = null; render(); },
+  tipOpen: d => { S.tipOpen = S.tipOpen === d.id ? null : d.id; render(); },
+  tipFav: d => { const u = viewUid(); const f = tipFavs(u); const i = f.indexOf(d.id); if(i >= 0) f.splice(i, 1); else f.push(d.id); lsSet("dll_tipfav_" + u, JSON.stringify(f)); toast(i >= 0 ? "Quitado de tus guardados." : "Guardado. Lo encuentras en «Guardados»."); render(); },
   goto: d => { S.cur = d.id; S.tab = d.tab; render(); },
-  verAlumno: d => { S.cur = d.id; S.role = "alumno"; S.tab = "entrenar"; S.av = null; render(); },
+  verAlumno: d => { S.cur = d.id; S.role = "alumno"; S.tab = "inicio"; S.av = null; render(); },
   volverCoach: () => { S.role = "coach"; S.tab = "equipo"; render(); },
   createProgram: () => { S.draft = {...(S.draft||{}), bloques:[{id:uid36("b"), nombre:"Bloque 1", objetivo:"", inicio:nextMonday(), semanas:[emptyWeek(),emptyWeek(),emptyWeek(),emptyWeek()]}]}; S.draftUid = S.cur; S.ed = {b:0,w:0}; markDirty(); render(); },
   genMacro: () => { if(S.confirmDel !== "macro" && S.draft.bloques.some(b => b.inicio && addDays(b.inicio, b.semanas.length*7) > nextMonday())){ S.confirmDel = "macro"; render(); return; } S.confirmDel = null; genMacro(); },
@@ -2183,7 +2314,7 @@ const ACT = {
     const data = {...prev, nombre:$("#pf-nombre").value.trim(), sexo:$("#pf-sexo").value, peso:numOrNull($("#pf-peso").value), disciplina:$("#pf-disc").value, correo:$("#pf-correo").value.trim(), telefono:$("#pf-tel").value.trim()};
     if(!data.nombre){ toast("Escribe tu nombre.", true); return; }
     if(!prev.creado) data.creado = TODAY;
-    if(await write("alumnos/"+u, data, "Perfil guardado.")){ if(!S.isOwner) S.tab = "entrenar"; render(); } }
+    if(await write("alumnos/"+u, data, "Perfil guardado.")){ if(!S.isOwner) S.tab = "inicio"; render(); } }
 };
 document.addEventListener("click", e => { const t = e.target.closest("[data-act]"); if(!t) return;
   if(t.dataset.act === "pendMarkLink"){ const a = S.alumnos[t.dataset.id]; if(a && !a.bienvenida){ const nv = {...a, bienvenida: TODAY}; write("alumnos/"+t.dataset.id, nv).then(ok => { if(ok){ S.alumnos[t.dataset.id] = nv; scheduleRender(); } }); } return; } const f = ACT[t.dataset.act]; if(f){ e.preventDefault(); f(t.dataset, t); } });
@@ -3175,7 +3306,7 @@ function checkReady(){
   if(S.state === "loading" && need.every(c => S.loaded[c])){ S.state = "ok"; S.stale = false;
     if(S.isOwner) setTimeout(linkPending, 0);
     if(S.isOwner && !S.cur) S.cur = Object.entries(S.alumnos).sort((a,b) => (a[1].nombre||"").localeCompare(b[1].nombre||""))[0]?.[0] || null;
-    if(!S.isOwner) S.tab = "entrenar"; }
+    if(!S.isOwner) S.tab = "inicio"; }
   if(need.every(c => S.loaded[c])) S.stale = false;
   if(S.isOwner && S.cur && !S.alumnos[S.cur] && S.state === "ok") S.cur = Object.keys(S.alumnos)[0] || null;
   if(S.isOwner && !S.cur && S.state === "ok") S.cur = Object.keys(S.alumnos)[0] || null;
@@ -3190,7 +3321,7 @@ function checkReady(){
   S.uid = user ? await user.id() : null;
   S.isOwner = user ? !!(await user.isOwner()) : false;
   if(!S.isOwner && !S.uid){ S.state = "nodb"; render(); return; }
-  S.role = S.isOwner ? "coach" : "alumno"; S.tab = S.isOwner ? "equipo" : "entrenar";
+  S.role = S.isOwner ? "coach" : "alumno"; S.tab = S.isOwner ? "equipo" : "inicio";
   listen("ejercicios", m => { S.ejDb = m; mergeEj(); });
   listen("alumnos", m => { S.alumnos = m; if(S.isOwner){ loadEmails(); setTimeout(linkPending, 0); } });
   listen("programas", m => S.prog = m);
