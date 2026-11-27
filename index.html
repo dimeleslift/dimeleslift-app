@@ -2721,13 +2721,19 @@ function barraSvg(valor){
   if(kg < 20 || !Number.isInteger((kg-20)/2.5)) return '<small>Carga no disponible con barra de 20 kg y estos discos.</small>';
   if(kg === 20) return '<small>Barra sola · 20 kg</small>';
   let lado = (kg-20)/2;
-  const piezas = [];
+  const piezas = [], placas = [];
   for(const [peso,color] of [[25,"#de242a"],[20,"#2465cc"],[15,"#ffd12a"],[10,"#19894b"],[5,"#fff"],[2.5,"#111"],[1.25,"#2465cc"]]){
     const cantidad = Math.floor(lado/peso);
     lado %= peso;
+    for(let i=0;i<Math.min(cantidad,30);i++) placas.push({peso,color});
     if(cantidad) piezas.push(`<span style="white-space:nowrap"><i aria-hidden="true" style="display:inline-block;border:1px solid #888;border-radius:50%;background:${color};width:12px;height:12px"></i> ${cantidad} × ${peso.toLocaleString("es-CL")} kg</span>`);
   }
-  return '<small>Barra de 20 kg · Por lado: '+piezas.join(" · ")+'</small>';
+  const paso = Math.min(14, 92 / placas.length);
+  const dibujo = placas.map(({peso,color},i) => {
+    const alto = 24 + 40 * Math.sqrt(peso / 25);
+    return [96-(i+1)*paso,204+i*paso].map(x => `<rect x="${x}" y="${40-alto/2}" width="${paso*.88}" height="${alto}" rx="2" fill="${color}" stroke="#aaa" stroke-width=".5"/>`).join("");
+  }).join("");
+  return `<svg class="gd-bar" viewBox="0 0 300 80" aria-hidden="true"><rect x="2" y="37" width="296" height="6" rx="3" fill="#888"/>${dibujo}</svg><div class="small">Barra de 20 kg · Por lado: ${piezas.join(" · ")}</div>`;
 }
 
 function vGuiado(){
