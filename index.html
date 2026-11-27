@@ -2461,7 +2461,7 @@ const ACT = {
   toggleEj: d => { const open = S.openEj[d.k] ?? !!document.querySelector(`[data-act="toggleEj"][data-k="${CSS.escape(d.k)}"][aria-expanded="true"]`); S.openEj[d.k] = !open; render(); },
   warmEj: d => { S.warmEj[d.k] = !S.warmEj[d.k]; render(); },
   chkSet: async d => { const k = d.k, i = +d.i; const arr = S.logDraft[k] || (S.logDraft[k] = []); const s = arr[i] || (arr[i] = {peso:"",reps:"",rpe:"",hecho:false});
-    if(!s.hecho){ const row = document.querySelectorAll(`[data-log^="${CSS.escape(k)}|${i}|"]`); row.forEach(inp => { const f = inp.dataset.log.split("|").pop(); const raw = String(inp.placeholder||""); const v = f === "peso" ? raw.replace(/\./g,"").replace(",",".") : raw.replace(",","."); if(s[f] === "" && v !== "" && !isNaN(+v)) s[f] = v; });
+    if(!s.hecho){ const {r} = filaDe(viewUid(),k); if(r && requiereKilos(r,planDe(r)[i]) && !kilosValidos(s.peso)) return toast("Ingresa los kilos de esta serie.",true); const row = document.querySelectorAll(`[data-log^="${CSS.escape(k)}|${i}|"]`); row.forEach(inp => { const f = inp.dataset.log.split("|").pop(); const raw = String(inp.placeholder||""); const v = f === "peso" ? raw.replace(/\./g,"").replace(",",".") : raw.replace(",","."); if(s[f] === "" && v !== "" && !isNaN(+v)) s[f] = v; });
       if(s.reps === ""){ toast("Anota las repeticiones de la serie.", true); return; } s.hecho = true;
       const L = S.ejercicios[d.ej]?.lift; ACT.timer({s: L ? 180 : 90}); }
     else s.hecho = false;
@@ -2829,12 +2829,18 @@ function vGuiado(){
     ${(() => { const demo = demoHtml(r, e, true); const inst = e?.inst?.length ? `<ol>${e.inst.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : "";
       return demo ? `<details class="small muted"><summary style="cursor:pointer">Ver cómo se hace</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${demo}${inst}</div></details>`
         : inst ? `<details class="small muted"><summary style="cursor:pointer">Instrucciones</summary><div style="margin-top:8px">${inst}</div></details>` : ""; })()}
-    ${tmp ? "" : `<button class="gd-cta" data-act="gdSerie">Terminé la serie</button>`}
+    ${tmp ? "" : `<button class="gd-cta" data-act="gdSerie" ${requiereKilos(r,gr) ? `data-exige-kilos ${kilosValidos(g.cur.peso) ? "" : "disabled"}` : ""}>${requiereKilos(r,gr) && !kilosValidos(g.cur.peso) ? "Ingresa los kilos para empezar" : "Terminé la serie"}</button>`}
     <div class="row between"><button class="btn ghost pill" data-act="gdSkip">Saltar ejercicio</button>${g.idx > 0 || hechas ? `<button class="btn ghost pill" data-act="gdBack">Atrás</button>` : ""}</div>
   </div>${sheet}`;
 }
 // Ejercicio por tiempo: la duración que indicó la coach y, aparte, el temporizador que el alumno inicia
 // ¿Hay que descargar? Solo si el ejercicio se hizo con carga (no cardio, movilidad ni peso corporal)
+function requiereKilos(r, gr){
+  if(!r?.ej || esTiempo(r,gr)) return false;
+  const equipo = S.ejercicios[r.ej]?.eq || "";
+  return !/peso corporal|sin equipo|banda|elástico|bodyweight/i.test(equipo);
+}
+function kilosValidos(valor){ const kg = numOrNull(valor); return Number.isFinite(kg) && kg > 0; }
 function descargar(r, draft){ return !!r?.ej && !esTiempo(r, planDe(r)[0]) && secOf(r) !== "activacion" && (draft||[]).some(x => x.hecho && (numOrNull(x.peso) || 0) > 0); }
 function tiempoHtml(g, r, gr, uni, key, sIdx){
   const dur = (numOrNull(gr.reps) || 0) * (uni === "min" ? 60 : 1);
@@ -3005,6 +3011,7 @@ function gdIrSiguiente(c, g){
 }
 async function gdGuardarSerie(x, rpe){ const {c, g, r, key} = x;
     const draft = draftDe(key, r, c.ent); const i = g.cur?.i ?? draft.findIndex(s => !s.hecho);
+    if(requiereKilos(r,planDe(r)[i]) && !kilosValidos(g.cur.peso)) return toast("Ingresa los kilos de esta serie.",true);
     const tmp = esTiempo(r, planDe(r)[i]);
     draft[i] = {peso: tmp || g.cur.peso === "" || g.cur.peso == null ? "" : String(g.cur.peso), reps: String(g.cur.reps ?? ""), rpe: tmp ? "" : rpe, hecho: true};
     const total = planDe(r).length; const quedan = draft.slice(0, total).some(s => !s.hecho);
@@ -3022,6 +3029,7 @@ Object.assign(ACT, {
     g.cur[d.f] = d.f === "reps" ? Math.max(0, cur + v) : Math.max(0, Math.round((cur + v)*100)/100); gdSave(); render(); },
   gdSerie: async () => { const g = S.gd; if(!g?.cur) return; const reps = numOrNull(g.cur.reps); const x = gdCur();
     const plan = x?.r ? planDe(x.r) : []; const gr = plan[g.cur.i] || plan[0];
+    if(requiereKilos(x?.r,gr) && !kilosValidos(g.cur.peso)) return toast("Ingresa los kilos de esta serie.",true);
     if(x?.r && esTiempo(x.r, gr)){ if(!reps) g.cur.reps = numOrNull(gr?.reps) ?? ""; return gdGuardarSerie(x, ""); }
     if(!reps){ toast("Anota cuántas repeticiones hiciste.", true); return; } g.fase = "rpe"; g.rpe = null; gdSave(); render(); },
   gdRpe: d => { S.gd.rpe = +d.v; gdSave(); render(); },
@@ -3068,7 +3076,7 @@ Object.assign(ACT, {
     render(); window.scrollTo(0,0); },
   gdShare: d => abrirEditorHistoria(d.k)
 });
-document.addEventListener("input", e => { const d = e.target.dataset; if(d.gd && S.gd?.cur){ S.gd.cur[d.gd] = String(e.target.value).replace(",", "."); if(d.gd === "peso"){ const panel = document.querySelector("[data-discos-gd]"); if(panel) panel.innerHTML = barraSvg(e.target.value); } gdSave(); } });
+document.addEventListener("input", e => { const d = e.target.dataset; if(d.gd && S.gd?.cur){ S.gd.cur[d.gd] = String(e.target.value).replace(",", "."); if(d.gd === "peso"){ const boton = document.querySelector("[data-exige-kilos]"); if(boton){ boton.disabled = !kilosValidos(e.target.value); boton.textContent = boton.disabled ? "Ingresa los kilos para empezar" : "Terminé la serie"; } const panel = document.querySelector("[data-discos-gd]"); if(panel) panel.innerHTML = barraSvg(e.target.value); } gdSave(); } });
 setInterval(() => {
   const g = S.gd; if(!g?.tmr) return; const el = document.getElementById("gdtmr"); const left = (g.tmr.end - Date.now())/1000;
   if(el){ el.textContent = left > 0 ? fmtSeg(left) : "¡Tiempo!"; el.classList.toggle("done", left <= 0); }
