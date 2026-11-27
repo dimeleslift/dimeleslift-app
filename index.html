@@ -2688,7 +2688,7 @@ function ultimoPeso(u, ej, keyHoy){
   return best;
 }
 function cargaInfo(u, r, gr, keyHoy){ // {ult, sg} solo si el ejercicio lleva carga
-  if(!r?.ej || esTiempo(r, gr)) return null;
+  if(!requiereKilos(r, gr) || esTiempo(r, gr)) return null;
   const ult = ultimoPeso(u, r.ej, keyHoy), sg = suggestion(u, r.ej, gr);
   return ult || sg ? {ult, sg} : null;
 }
@@ -2783,22 +2783,23 @@ function vGuiado(){
       ${nv(u) ? msgHtml(g.fase === "siguiente" ? msgDe("mot", u, dk, "sig"+g.idx) : msgDe(sIdx % 2 ? "edu" : "mot", u, dk, "des"+g.idx+"-"+sIdx), g.idx + sIdx) : ""}
       <div class="gd-next"><span class="small muted">${g.fase === "siguiente" ? "Siguiente" : "Ahora"}</span><b>${esc(nxt ? ejName(nxt.ej) : "Cierre de la sesión")}</b>${g.fase === "descanso" ? `<span class="small muted">Serie ${Math.min(sIdx+1, plan.length)} de ${plan.length}</span>` : ""}
       ${g.fase === "siguiente" && nxt ? (() => { const ci = cargaInfo(u, nxt, planDe(nxt)[0], `${dk}|${nxt.id}`); const kgU = esMancuerna(nxt.ej) ? " kg c/u" : " kg";
-        if(nv(u)){ const mm = !esTiempo(nxt, planDe(nxt)[0]) ? mejorMarca(u, nxt.ej, `${dk}|${nxt.id}`) : null; const sg2 = ci?.sg;
+        if(nv(u)){ const mm = requiereKilos(nxt, planDe(nxt)[0]) && !esTiempo(nxt, planDe(nxt)[0]) ? mejorMarca(u, nxt.ej, `${dk}|${nxt.id}`) : null; const sg2 = ci?.sg;
           return mm || sg2 ? `<span class="small">${mm ? `Tu mejor marca: <b>${fmtKg(mm.peso)}${kgU} × ${mm.reps}</b>` : "Sin marcas anteriores"}${sg2 ? ` · Sugerencia de tu coach: <b style="color:var(--acc)">${fmtKg(sg2)}${kgU}</b>` : ""}</span>` : ""; }
         return ci ? `<span class="small">${ci.ult ? `Última vez: <b>${fmtKg(ci.ult.peso)}${kgU}</b>` : "Sin registros anteriores"}${ci.sg ? ` · Sugerido: <b style="color:var(--acc)">${fmtKg(ci.sg)}${kgU}</b>` : ""}</span>` : ""; })() : ""}</div>
       <button class="gd-cta" data-act="gdGo">${g.fase === "siguiente" ? (nxt ? "Siguiente: "+esc(ejName(nxt.ej)) : "Ir al cierre") : "Empezar la serie"}</button>
       <button class="btn ghost pill" data-act="gdBack">‹ Atrás: corregir ${g.fase === "siguiente" ? "el ejercicio anterior" : "la serie anterior"}</button></div>`;
   }
   if(sIdx >= plan.length){ g.idx++; g.cur = null; gdSave(); return vGuiado(); }
-  const gr = plan[sIdx]; const sg = suggestion(u, r.ej, gr);
+  const gr = plan[sIdx]; const conCarga = requiereKilos(r, gr);
+  const sg = conCarga ? suggestion(u, r.ej, gr) : null;
   const prev = sIdx > 0 ? draft[sIdx-1] : null;
-  if(!g.cur || g.cur.key !== key || g.cur.i !== sIdx) g.cur = {key, i:sIdx, peso: numOrNull(draft[sIdx].peso) ?? numOrNull(prev?.peso) ?? sg ?? "", reps: numOrNull(draft[sIdx].reps) ?? (+gr.reps || "")};
-  const e = S.ejercicios[r.ej]; const manc = esMancuerna(r.ej); const tmp = esTiempo(r, gr); const uni = unidadDe(r, gr); const barra = !tmp && esBarra(r.ej);
+  if(!g.cur || g.cur.key !== key || g.cur.i !== sIdx) g.cur = {key, i:sIdx, peso: conCarga ? (numOrNull(draft[sIdx].peso) ?? numOrNull(prev?.peso) ?? sg ?? "") : "", reps: numOrNull(draft[sIdx].reps) ?? (+gr.reps || "")};
+  const e = S.ejercicios[r.ej]; const manc = esMancuerna(r.ej); const tmp = esTiempo(r, gr); const uni = unidadDe(r, gr); const barra = conCarga && !tmp && esBarra(r.ej);
   const intens = gr.t === "%" ? (gr.v ? vTxt(gr.v)+"%" : "") : gr.v != null && gr.v !== "" ? gr.t+" "+vTxt(gr.v) : "";
   const hechas = draft.filter(s => s.hecho).length;
   const sheet = g.fase === "rpe" ? `<div class="gd-sheetbg" data-act="gdRpeCancel"></div><div class="gd-sheet" role="dialog" aria-label="¿Qué tan difícil se sintió?">
       <div class="gd-grab"></div>
-      <div class="row between small muted"><span>${esc(ejName(r.ej))} · Serie ${sIdx+1} de ${plan.length}</span><span>${fmtKg(numOrNull(g.cur.peso))} kg × ${esc(g.cur.reps)}</span></div>
+      <div class="row between small muted"><span>${esc(ejName(r.ej))} · Serie ${sIdx+1} de ${plan.length}</span><span>${conCarga ? fmtKg(numOrNull(g.cur.peso))+" kg × " : ""}${esc(g.cur.reps)}${conCarga ? "" : " reps"}</span></div>
       <div class="gd-rpeicon"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="3" y="13" width="4" height="8" rx="2" fill="var(--acc)" opacity=".55"/><rect x="10" y="8" width="4" height="13" rx="2" fill="var(--acc)" opacity=".8"/><rect x="17" y="3" width="4" height="18" rx="2" fill="var(--acc)"/></svg></div>
       <h3>¿Qué tan difícil se sintió?</h3>
       ${intens ? `<div class="small" style="text-align:center;margin:-4px 0 6px">Objetivo de tu coach: <b>${esc(intens)}</b> · marca lo que sentiste de verdad</div>` : ""}
@@ -2811,26 +2812,26 @@ function vGuiado(){
     <h2 class="gd-title">${esc(ejName(r.ej))}</h2>
     <div class="row"><span class="pillchip acc">Serie ${sIdx+1} de ${plan.length}</span><span class="pillchip">${esc(gr.reps || "?")} ${uLbl(uni)}</span>${intens && !tmp ? `<span class="pillchip" title="Objetivo que puso tu coach">Objetivo ${esc(intens)}</span>` : ""}${gr.ty ? `<span class="pillchip">${esc(gr.ty)}</span>` : ""}${r.tempo ? `<span class="pillchip">Tempo ${esc(r.tempo)}</span>` : ""}</div>
     ${r.nota ? `<div class="small" style="font-style:italic">${esc(r.nota)}</div>` : ""}
-    ${nv(u) && sIdx === 0 && !hechas && pideAprox(r, gr) ? `<div class="gd-aviso">${AVISO_APROX}</div>` : ""}
-    ${!tmp && nv(u) ? (() => { const mm = mejorMarca(u, r.ej, key); const kgU = manc ? " kg c/u" : " kg";
+    ${conCarga && nv(u) && sIdx === 0 && !hechas && pideAprox(r, gr) ? `<div class="gd-aviso">${AVISO_APROX}</div>` : ""}
+    ${conCarga && !tmp && nv(u) ? (() => { const mm = mejorMarca(u, r.ej, key); const kgU = manc ? " kg c/u" : " kg";
       const b = (v, txt) => `<button class="btn sm ${numOrNull(g.cur.peso) === v ? "" : "ghost"} pill" data-act="gdUsar" data-v="${v}">${txt}</button>`;
       return `<div class="gd-carga">
         ${mm ? `<div><span class="small muted">Tu última mejor marca fue de</span><b>${fmtKg(mm.peso)}${kgU} × ${esc(mm.reps)}</b><span class="small muted">${fmtDate(mm.fecha)}${mm.rpe != null ? " · RPE "+fmtNum(mm.rpe) : ""}</span>${b(mm.peso, "Usar "+fmtKg(mm.peso))}</div>` : `<div><span class="small muted">Tu mejor marca</span><b>Aún no hay</b><span class="small muted">Hoy marcas la primera</span></div>`}
         ${sg ? `<div class="sg"><span class="small muted">Sugerencia de tu coach</span><b>${fmtKg(sg)}${kgU}</b><span class="small muted">según tu historial</span>${b(sg, "Usar "+fmtKg(sg))}</div>` : ""}
       </div>`; })() : ""}
-    ${!tmp && !nv(u) ? (() => { const ult = ultimoPeso(u, r.ej, key); const kgU = manc ? " kg c/u" : " kg";
+    ${conCarga && !tmp && !nv(u) ? (() => { const ult = ultimoPeso(u, r.ej, key); const kgU = manc ? " kg c/u" : " kg";
       const b = (v, txt) => `<button class="btn sm ${numOrNull(g.cur.peso) === v ? "" : "ghost"} pill" data-act="gdUsar" data-v="${v}">${txt}</button>`;
       return (ult || sg) ? `<div class="gd-carga">
         ${ult ? `<div><span class="small muted">Última vez que lo hiciste</span><b>${fmtKg(ult.peso)}${kgU} × ${esc(ult.reps)}</b><span class="small muted">${fmtDate(ult.fecha)}</span>${b(ult.peso, "Usar "+fmtKg(ult.peso))}</div>` : `<div><span class="small muted">Última vez</span><b>Sin registros</b></div>`}
         ${sg ? `<div class="sg"><span class="small muted">Sugerido por la app</span><b>${fmtKg(sg)}${kgU}</b><span class="small muted">según tu historial</span>${b(sg, "Usar "+fmtKg(sg))}</div>` : ""}
       </div>` : ""; })() : ""}
-    ${prev?.hecho && !tmp ? `<div class="small muted">Serie anterior de hoy: ${fmtKg(numOrNull(prev.peso))} kg × ${esc(prev.reps)}</div>` : ""}
-    ${tmp ? (requiereKilos(r,gr) ? stepper(manc ? "Kilos por mancuerna" : "Kilos","peso",g.cur.peso,manc ? 1 : 2.5,"") : "")+tiempoHtml(g, r, gr, uni, key, sIdx) : `<div class="gd-steps">${stepper(manc ? "Kilos por mancuerna" : "Kilos", "peso", g.cur.peso, manc ? 1 : 2.5, manc ? "por mancuerna" : "")+stepper("Repeticiones", "reps", g.cur.reps, 1, "")}</div>`}
+    ${prev?.hecho && !tmp ? `<div class="small muted">Serie anterior de hoy: ${conCarga ? fmtKg(numOrNull(prev.peso))+" kg × " : ""}${esc(prev.reps)}${conCarga ? "" : " reps"}</div>` : ""}
+    ${tmp ? (conCarga ? stepper(manc ? "Kilos por mancuerna" : "Kilos","peso",g.cur.peso,manc ? 1 : 2.5,"") : "")+tiempoHtml(g, r, gr, uni, key, sIdx) : `<div class="${conCarga ? "gd-steps" : ""}">${conCarga ? stepper(manc ? "Kilos por mancuerna" : "Kilos", "peso", g.cur.peso, manc ? 1 : 2.5, manc ? "por mancuerna" : "") : ""}${stepper("Repeticiones", "reps", g.cur.reps, 1, "")}</div>`}
     ${barra ? `<div data-discos-gd>${barraSvg(g.cur.peso)}</div>` : ""}
     ${(() => { const demo = demoHtml(r, e, true); const inst = e?.inst?.length ? `<ol>${e.inst.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : "";
       return demo ? `<details class="small muted"><summary style="cursor:pointer">Ver cómo se hace</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${demo}${inst}</div></details>`
         : inst ? `<details class="small muted"><summary style="cursor:pointer">Instrucciones</summary><div style="margin-top:8px">${inst}</div></details>` : ""; })()}
-    ${tmp ? "" : `<button class="gd-cta" data-act="gdSerie" ${requiereKilos(r,gr) ? `data-exige-kilos ${kilosValidos(g.cur.peso) ? "" : "disabled"}` : ""}>${requiereKilos(r,gr) && !kilosValidos(g.cur.peso) ? "Ingresa los kilos para empezar" : "Terminé la serie"}</button>`}
+    ${tmp ? "" : `<button class="gd-cta" data-act="gdSerie" ${conCarga ? `data-exige-kilos ${kilosValidos(g.cur.peso) ? "" : "disabled"}` : ""}>${conCarga && !kilosValidos(g.cur.peso) ? "Ingresa los kilos para empezar" : "Terminé la serie"}</button>`}
     <div class="row between"><button class="btn ghost pill" data-act="gdSkip">Saltar ejercicio</button>${g.idx > 0 || hechas ? `<button class="btn ghost pill" data-act="gdBack">Atrás</button>` : ""}</div>
   </div>${sheet}`;
 }
@@ -2841,14 +2842,14 @@ function requiereKilos(r, gr){
   const equipo = S.ejercicios[r.ej]?.eq || "";
   const nombre = ejName(r.ej);
   if(/lastr|con (?:peso adicional|disco|barra|mancuerna|kettlebell)|lastre/i.test(nombre)) return true;
-  if(/peso corporal|sin equipo|banda|elástico|bodyweight|foam roller|fitball|colchoneta|barra de dominadas/i.test(equipo)) return false;
+  if(/peso corporal|sin (?:equipo|carga|peso)|banda|elástico|bodyweight|foam roller|fitball|colchoneta|barra de dominadas/i.test(equipo) || /peso corporal|sin (?:carga|peso)|marcha en el lugar/i.test(nombre)) return false;
   if(/barra|mancuerna|polea|kettlebell|balón medicinal/i.test(equipo)) return true;
   if(secOf(r) === "cardio" || /bicicleta|trote|caminadora|elíptica|remo ergómetro/i.test(nombre)) return false;
   if(/máquina/i.test(equipo) || S.ejercicios[r.ej]?.lift || /jalón|press|peso muerto|farmer|granjero/i.test(nombre)) return true;
   return !esTiempo(r,gr) && !/movilidad|estiramiento|dominada|flexiones|burpee|salto|plancha/i.test(nombre);
 }
 function kilosValidos(valor){ const kg = numOrNull(valor); return Number.isFinite(kg) && kg > 0; }
-function descargar(r, draft){ return !!r?.ej && !esTiempo(r, planDe(r)[0]) && secOf(r) !== "activacion" && (draft||[]).some(x => x.hecho && (numOrNull(x.peso) || 0) > 0); }
+function descargar(r, draft){ return requiereKilos(r, planDe(r)[0]) && !esTiempo(r, planDe(r)[0]) && secOf(r) !== "activacion" && (draft||[]).some(x => x.hecho && (numOrNull(x.peso) || 0) > 0); }
 function tiempoHtml(g, r, gr, uni, key, sIdx){
   const dur = (numOrNull(gr.reps) || 0) * (uni === "min" ? 60 : 1);
   const t = g.tmr && g.tmr.key === key && g.tmr.i === sIdx ? g.tmr : null;
@@ -3018,9 +3019,10 @@ function gdIrSiguiente(c, g){
 }
 async function gdGuardarSerie(x, rpe){ const {c, g, r, key} = x;
     const draft = draftDe(key, r, c.ent); const i = g.cur?.i ?? draft.findIndex(s => !s.hecho);
-    if(requiereKilos(r,planDe(r)[i]) && !kilosValidos(g.cur.peso)) return toast("Ingresa los kilos de esta serie.",true);
+    const conCarga = requiereKilos(r, planDe(r)[i]);
+    if(conCarga && !kilosValidos(g.cur.peso)) return toast("Ingresa los kilos de esta serie.",true);
     const tmp = esTiempo(r, planDe(r)[i]);
-    draft[i] = {peso: (tmp && !requiereKilos(r,planDe(r)[i])) || g.cur.peso === "" || g.cur.peso == null ? "" : String(g.cur.peso), reps: String(g.cur.reps ?? ""), rpe: tmp ? "" : rpe, hecho: true};
+    draft[i] = {peso: conCarga ? String(g.cur.peso) : "", reps: String(g.cur.reps ?? ""), rpe: tmp ? "" : rpe, hecho: true};
     const total = planDe(r).length; const quedan = draft.slice(0, total).some(s => !s.hecho);
     const desc = +r.descanso || (tmp ? 60 : S.ejercicios[r.ej]?.lift ? 180 : 120);
     if(quedan){ g.fase = "descanso"; g.restEnd = Date.now() + desc*1000; g.rang = false; g.cur = null; g.rpe = null; } else gdIrSiguiente(c, g);
